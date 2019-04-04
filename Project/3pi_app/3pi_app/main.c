@@ -3,6 +3,58 @@
 #include <pololu/3pi.h>
 #include <avr/pgmspace.h>
 
+// Constants
+const int MAX_ROWS = 20; // matrix dimensions
+
+// Structures and classes
+enum EOrientation
+{
+	North,
+	NorthEast,
+	East,
+	SouthEast,
+	South,
+	SouthWest,
+	West,
+	NorthWest
+};
+
+struct Point2D
+{
+	public:
+		Point2D(int inX, int inY)
+			: x( inX )
+			, y ( inY )
+			{}
+	
+		int x;
+		int y;	
+};
+
+struct Cell
+{
+	public:
+		Cell()
+			: distToStart( INT_MAX )
+			, distToFinish( INT_MAX )
+			, isObstacle( 0 )
+			{}
+	
+	// Inner fields
+		int distToStart;
+		int distToFinish;
+		int isObstacle;
+};
+
+Cell** matrix = nullptr;
+
+// Globals for robot current state
+Point2D			position( 0, 0 );
+EOrientation	orientation		= EOrientation:North;
+Point2D			startPos( 0, 0 );
+Point2D			finishPos( 10, 10 );
+
+
 // This is the main function, where the code starts.  All C programs
 // must have a main() function defined somewhere.
 int main()
@@ -14,10 +66,23 @@ int main()
 	//mainRobotLogic();
 }
 
+
+// Initializes the matrix that represents the virtual coordinate system
+void init_matrix()
+{
+	matrix = new Cell*[ MAX_ROWS ];
+	
+	for ( int i = 0; i < MAX_ROWS; i++ )
+	{
+		matrix[ i ] = new Cell[ MAX_ROWS ];
+	}
+}
+
 // Waits for Button B to be pressed for user convenience and then
 // Initializes the line reading sensors
 void initialize()
 {
+	init_matrix();
 	// Display battery voltage and wait for button press
 	while ( !button_is_pressed( BUTTON_B ) )
 	{
