@@ -201,7 +201,7 @@ void SetDirection(Point2D startPoint, Point2D endPoint){
 	int angle = 0;
 	int direction = 0;
 	int robotAngle = GetRobotAngle();
-	if(x = 0)
+	if(x == 0)
 	{
 		if(y > 0)
 		{
