@@ -87,18 +87,22 @@ void initialize()
 	set_motors( 0, 0 );
 }
 
+void make_turn(short left_speed, short right_speed, short cnt)
+{
+	set_motors( left_speed, right_speed );
+	delay_ms( 200 * cnt );
+	
+	set_motors( 0, 0 );
+}
+
 void turn_half_left(short turns)
 {
-	set_motors( -42, 42 );
-	delay_ms( turns*200 );
-	set_motors( 0, 0 );
+	make_turn( -42, 42, turns );
 }
 
 void turn_half_right(short turns)
 {
-	set_motors( 41, -41 );
-	delay_ms( turns*200 );
-	set_motors( 0, 0 );
+	make_turn( 41, -41, turns );
 }
 
 // Tests data returned from the sensors
@@ -177,7 +181,8 @@ int GetRobotAngle(){
 		case EOrientation::North : return 90;
 		case EOrientation::NorthWest: return 135;	
 		case EOrientation::West : return 180;							
-		case EOrientation::SouthWest : return 225;
+		case EOrientation::SouthWest :
+		default: return 225;
 	}
 }
 
@@ -250,4 +255,11 @@ int main()
 	initialize();
 	test_sensors();
 	//mainRobotLogic();
+	
+	// Set Down of the robot.
+	set_motors( 0, 0 );
+	while ( true )
+	{
+		// Call this in the end in order not to let the robot execute random code!!!
+	}
 }
