@@ -1,2 +1,13 @@
 
 Project/3pi_app/3pi_app/Debug/*
+*.o
+*.o
+Project/GccApplication4/GccApplication4/Debug/main.d
+Project/GccApplication4/GccApplication4/Debug/GccApplication4.srec
+Project/GccApplication4/GccApplication4/Debug/GccApplication4.map
+Project/GccApplication4/GccApplication4/Debug/GccApplication4.lss
+Project/GccApplication4/GccApplication4/Debug/GccApplication4.hex
+Project/GccApplication4/GccApplication4/Debug/GccApplication4.elf
+Project/GccApplication4/.vs/GccApplication4/v14/.atsuo
+Project/3pi_app/.vs/3pi_app/v14/.atsuo
+Project/GccApplication4/GccApplication4/Debug/Makefile

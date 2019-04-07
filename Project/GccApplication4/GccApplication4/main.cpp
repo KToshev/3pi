@@ -5,10 +5,12 @@
 #include <avr/pgmspace.h>
 #include <limits.h>
 #include <stddef.h>
-
+#include <stdio.h>
+#include <math.h> 
+#include <stdlib.h>
 // Constants
 const short MAX_ROWS = 15; // matrix dimensions
-
+#define PI 3.14159265
 // Structures and classes
 enum EOrientation
 {
@@ -165,6 +167,79 @@ void mainRobotLogic()
 		}
 	}
 }
+
+int GetRobotAngle(){
+	switch(orientation){
+		case EOrientation::South : return -90;		
+		case EOrientation::SouthEast : return -45;		
+		case EOrientation::East : return 0;
+		case EOrientation::NorthEast: return 45;
+		case EOrientation::North : return 90;
+		case EOrientation::NorthWest: return 135;	
+		case EOrientation::West : return 180;							
+		case EOrientation::SouthWest : return 225;
+	}
+}
+
+void SetDeviceOrientation(int angle){
+	switch(angle){
+		case -90: orientation = EOrientation::South ;break;
+		case -45 : orientation = EOrientation::SouthEast;break;				
+		case 0 : orientation = EOrientation::East;break;
+		case 45: orientation = EOrientation::NorthEast;break;		
+		case 90: orientation = EOrientation::North;break;
+		case 135: orientation = EOrientation::NorthWest;break;
+		case 180 : orientation = EOrientation::West  ;break;						
+		case 225: orientation = EOrientation::SouthWest ;break;
+	}	
+}
+
+//1,2,3,4 clockwise, -1,-2,-3,-4 anticlockwise
+void SetDirection(Point2D startPoint, Point2D endPoint){
+	short x = startPoint.x - endPoint.x;
+	short y = startPoint.y - endPoint.y;
+	int angle = 0;
+	int direction = 0;
+	int robotAngle = GetRobotAngle();
+	if(x = 0)
+	{
+		if(y > 0)
+		{
+			angle = 90;
+		}
+		else if(y < 0)
+		{
+			angle = -90;
+		}
+	} 
+	else{
+		angle = (int)(atan(y/x)* 180 / PI);
+		if(x < 0) angle += 180;
+	}
+	direction = (int)(round((robotAngle - angle)/45));
+
+	if(direction > 4)
+	{
+		direction = -8 + direction;
+	}
+	if(direction < -4)
+	{
+		direction = 8 + direction;	
+	}	
+	
+	SetDeviceOrientation(angle);
+	if(direction < 0){
+		//turn left
+		set_motors( -41, 41 );
+		delay_ms( abs(direction)*200 );
+	}
+	else if(direction > 0){
+		//turn right
+		set_motors( 41, -41 );
+		delay_ms( abs(direction)*200 );
+	}
+	set_motors( 0, 0 );
+}
 //Ctrl+K+D
 
 // This is the main function, where the code starts.  All C programs
@@ -173,7 +248,6 @@ int main()
 {
 	// set up the 3pi
 	initialize();
-	
 	test_sensors();
 	//mainRobotLogic();
 }
