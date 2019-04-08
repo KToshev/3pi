@@ -245,6 +245,26 @@ void SetDirection(Point2D startPoint, Point2D endPoint){
 	}
 	set_motors( 0, 0 );
 }
+
+int getSign(short num){
+	short sign;
+	if(num > 0){
+		sign = 1;
+	}else if(num < 0){
+		sign = -1;
+	} else {
+		sign = 0;
+	}
+	return sign;
+}
+
+
+void stepGoal(){
+	
+	Point2D nextPos(position.x + getSign(finishPos.x - position.x), 
+					position.y + getSign(finishPos.y - position.y));
+	SetDirection(position, nextPos);
+}
 //Ctrl+K+D
 
 // This is the main function, where the code starts.  All C programs
