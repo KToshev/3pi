@@ -10,6 +10,7 @@
 #include <stdlib.h>
 // Constants
 const short MAX_ROWS = 15; // matrix dimensions
+const int MARKER_VALUE = 350;
 #define PI 3.14159265
 // Structures and classes
 enum EOrientation
@@ -57,7 +58,7 @@ Cell matrix[ MAX_ROWS ][ MAX_ROWS ];
 Point2D			position( 0, 0 );
 EOrientation	orientation		= EOrientation::North;
 Point2D			startPos( 0, 0 );
-Point2D			finishPos( 10, 10 );
+Point2D			finishPos( 2, 3 );
 
 
 // Waits for Button B to be pressed for user convenience and then
@@ -102,7 +103,7 @@ void turn_half_left(short turns)
 
 void turn_half_right(short turns)
 {
-	make_turn( 41, -41, turns );
+	make_turn( 42, -42, turns );
 }
 
 // Tests data returned from the sensors
@@ -124,51 +125,6 @@ void test_sensors()
 		
 		// Play sound to notify that the next iteration will begin.
 		play( ">>a32" );
-	}
-}
-
-// Our main logic function
-void mainRobotLogic()
-{
-	unsigned int	sensors[ 5 ]; // an array to hold sensor values
-	bool			moving	= true; // This flag tells us if we have to look for the marker color. If it is 1, we are on a marker and have to decide where to go.
-	short			iter	= 0; // Should be replaced with posX and posY
-	
-	while ( true )
-	{
-		read_line_sensors( sensors, IR_EMITTERS_ON );
-
-		if ( sensors[1] > 800 || sensors[2] > 800 || sensors[3] > 800 ) // is_on_marker(sensors)
-		{
-			if ( moving )
-			{
-				// Decide where to go next
-				iter++;
-				play( ">>a32" );
-				moving = false;
-				
-				delay_ms( 500 );
-				set_motors( 0, 0 );
-				
-				if ( iter == 4 )
-				{
-					turn_half_right(2);
-				}
-				else if ( iter == 6 )
-				{
-					turn_half_left(2);
-				}
-			}
-		}
-		else
-		{
-			moving = true;
-		}
-		
-		if ( iter < 7 )
-		{
-			set_motors( 20, 20 );
-		}
 	}
 }
 
@@ -201,8 +157,8 @@ void SetDeviceOrientation(int angle){
 
 //1,2,3,4 clockwise, -1,-2,-3,-4 anticlockwise
 void SetDirection(Point2D startPoint, Point2D endPoint){
-	short x = startPoint.x - endPoint.x;
-	short y = startPoint.y - endPoint.y;
+	short x = -startPoint.x + endPoint.x;
+	short y = -startPoint.y + endPoint.y;
 	int angle = 0;
 	int direction = 0;
 	int robotAngle = GetRobotAngle();
@@ -222,7 +178,7 @@ void SetDirection(Point2D startPoint, Point2D endPoint){
 		if(x < 0) angle += 180;
 	}
 	direction = (int)(round((robotAngle - angle)/45));
-
+	
 	if(direction > 4)
 	{
 		direction = -8 + direction;
@@ -230,18 +186,22 @@ void SetDirection(Point2D startPoint, Point2D endPoint){
 	if(direction < -4)
 	{
 		direction = 8 + direction;	
-	}	
+	}
+	
+	clear();
+	print_long(direction);
+	lcd_goto_xy( 0, 1 );
+	print_long(angle);
+	//delay_ms(1000);
 	
 	SetDeviceOrientation(angle);
 	if(direction < 0){
 		//turn left
-		set_motors( -41, 41 );
-		delay_ms( abs(direction)*200 );
+		turn_half_left( abs( direction ) );
 	}
 	else if(direction > 0){
 		//turn right
-		set_motors( 41, -41 );
-		delay_ms( abs(direction)*200 );
+		turn_half_right( abs( direction ) );
 	}
 	set_motors( 0, 0 );
 }
@@ -258,7 +218,7 @@ short getSign(short num){
 	return sign;
 }
 
-Point2D nextStepToGoal(Point2D goalPos){
+Point2D nextStepToFinish(Point2D goalPos){
 	Point2D nextPos(position.x + getSign(finishPos.x - position.x), 
 					position.y + getSign(finishPos.y - position.y));
 	//TODO: Chech is obstacle or maybe is visited
@@ -267,9 +227,63 @@ Point2D nextStepToGoal(Point2D goalPos){
 
 void stepToGoal(Point2D goalPos){
 	Point2D nextPos = nextStepToFinish(goalPos);
+	
+	clear();
+	print("(");
+	print_long( nextPos.x );
+	print(", ");
+	print_long( nextPos.y );
+	print(")");
+	
+	// delay_ms(1000);
+	
 	SetDirection(position, nextPos);
+	position = nextPos;
 }
-//Ctrl+K+D
+
+// Our main logic function
+void mainRobotLogic()
+{
+	unsigned int	sensors[ 5 ]; // an array to hold sensor values
+	bool			moving	= true; // This flag tells us if we have to look for the marker color. If it is 1, we are on a marker and have to decide where to go.
+	bool			isLastStep = false;
+	
+	while ( position.x != finishPos.x || position.y != finishPos.y || isLastStep )
+	{
+		read_line_sensors( sensors, IR_EMITTERS_ON );
+
+		if ( sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE ) // is_on_marker(sensors)
+		{
+			if ( moving )
+			{
+				// Decide where to go next
+				play( ">>a32" );
+				moving = false;
+				
+				delay_ms( 500 );
+				set_motors( 0, 0 );
+				
+				stepToGoal( finishPos );
+				
+				if ( isLastStep )
+				{
+					isLastStep = false;
+				}
+				else if ( position.x == finishPos.x && position.y == finishPos.y )
+				{
+					isLastStep = true;
+				}
+			}
+		}
+		else
+		{
+			moving = true;
+		}
+		
+		set_motors( 20, 20 );
+	}
+}
+
 
 // This is the main function, where the code starts.  All C programs
 // must have a main() function defined somewhere.
@@ -277,8 +291,8 @@ int main()
 {
 	// set up the 3pi
 	initialize();
-	test_sensors();
-	//mainRobotLogic();
+	//test_sensors();
+	mainRobotLogic();
 	
 	// Set Down of the robot.
 	set_motors( 0, 0 );
@@ -286,5 +300,4 @@ int main()
 	{
 		// Call this in the end in order not to let the robot execute random code!!!
 	}
-}
 }
