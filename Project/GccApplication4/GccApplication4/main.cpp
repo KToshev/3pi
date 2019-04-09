@@ -246,7 +246,7 @@ void SetDirection(Point2D startPoint, Point2D endPoint){
 	set_motors( 0, 0 );
 }
 
-int getSign(short num){
+short getSign(short num){
 	short sign;
 	if(num > 0){
 		sign = 1;
@@ -258,11 +258,15 @@ int getSign(short num){
 	return sign;
 }
 
-
-void stepGoal(){
-	
+Point2D nextStepToGoal(Point2D goalPos){
 	Point2D nextPos(position.x + getSign(finishPos.x - position.x), 
 					position.y + getSign(finishPos.y - position.y));
+	//TODO: Chech is obstacle or maybe is visited
+	return nextPos;
+}
+
+void stepToGoal(Point2D goalPos){
+	Point2D nextPos = nextStepToFinish(goalPos);
 	SetDirection(position, nextPos);
 }
 //Ctrl+K+D
@@ -282,4 +286,5 @@ int main()
 	{
 		// Call this in the end in order not to let the robot execute random code!!!
 	}
+}
 }
