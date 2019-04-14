@@ -271,13 +271,77 @@ class Robot
 
 		Point2D nextStepToFinish(Point2D goalPos)
 		{
+			EOrientation backwardDirection = GetBackwardDirection();
 			Point2D nextPos(position.x + getSign(finishPos.x - position.x),
 							position.y + getSign(finishPos.y - position.y));
-			//TODO: Chech is obstacle or maybe is visited
+			SetDirection(position,nextPos);				
+			//TODO: Check is obstacle or maybe is visited
+			if(CheckIfDirectionIsTraversable()){
+				return nextPos;
+			}
+			EOrientation startOrientation = orientation;
 			
+			do
+			{
+				//45 degrees
+				turn_half_right(1);
+				int angle = GetRobotAngle(); 
+				angle -= 45;
+				if(angle <-90) angle = 225;
+				SetDeviceOrientation(angle);
+			}while(orientation != startOrientation && (!CheckIfDirectionIsTraversable() || backwardDirection == orientation));
+			
+			EOrientation finalOrientation = backwardDirection;
+			if(startOrientation != orientation){
+				finalOrientation = orientation;
+			}
+			nextPos = GetNextStepByOrientation(finalOrientation);
+			SetDirection(position,nextPos);
 			return nextPos;
 		}
-
+		
+		Point2D GetNextStepByOrientation(EOrientation orientation)
+		{
+			switch ( orientation )
+			{
+				case EOrientation::South:		return Point2D(position.x, position.y-1);
+				case EOrientation::SouthEast:	return Point2D(position.x+1, position.y-1);
+				case EOrientation::East:		return Point2D(position.x+1, position.y);
+				case EOrientation::NorthEast:	return Point2D(position.x+1, position.y+1);
+				case EOrientation::North:		return Point2D(position.x, position.y+1);
+				case EOrientation::NorthWest:	return Point2D(position.x-1, position.y+1);
+				case EOrientation::West:		return Point2D(position.x-1, position.y);
+				case EOrientation::SouthWest:   return Point2D(position.x-1, position.y-1);
+			}			
+			
+			return position;
+		}
+		
+		EOrientation GetBackwardDirection()
+		{
+			switch ( orientation )
+			{
+				case EOrientation::South:		return EOrientation::North;
+				case EOrientation::SouthEast:	return EOrientation::NorthWest;
+				case EOrientation::East:		return EOrientation::West;
+				case EOrientation::NorthEast:	return EOrientation::SouthWest;
+				case EOrientation::North:		return EOrientation::South;
+				case EOrientation::NorthWest:	return EOrientation::SouthEast;
+				case EOrientation::West:		return EOrientation::East;
+				case EOrientation::SouthWest:   return EOrientation::NorthEast;
+			}
+		}
+		
+		bool CheckIfDirectionIsTraversable()
+		{
+			unsigned int	sensors[ 5 ]; 
+			read_line_sensors( sensors, IR_EMITTERS_ON );
+			if(sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE){
+				return false;
+			}
+			return true;
+		}
+		
 		void stepToGoal(Point2D goalPos)
 		{
 			Point2D nextPos = nextStepToFinish( goalPos );
@@ -291,7 +355,7 @@ class Robot
 			
 			// delay_ms(1000);
 			
-			SetDirection( position, nextPos );
+			//SetDirection( position, nextPos );
 			position = nextPos;
 		}
 		
