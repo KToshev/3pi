@@ -67,7 +67,7 @@ class Robot
 		Robot()
 			: position( 0, 0 )
 			, orientation( EOrientation::North )
-			, finishPos( 2, 3 )
+			, finishPos( 0, 3 )
 		{
 		}
 		
@@ -94,12 +94,13 @@ class Robot
 				if ( isLastStep )
 				{
 					isLastStep = false;
+					
+					this->reverseDirection();
 				}
 				else if ( position.x == finishPos.x && position.y == finishPos.y )
 				{
 					isLastStep = true;
 				}
-				
 			}
 		}
 		
@@ -148,7 +149,7 @@ class Robot
 			while(!is_on_marker()){}
 			
 			play( ">>a32" );
-			delay_ms( 500 );
+			delay_ms( 900 );
 			set_motors( 0, 0 );
 		}
 		
@@ -274,44 +275,70 @@ class Robot
 		}
 
 		// !!!Only for one step!!!!
-		short getDistance(Point2D prevPos, Point2D nextPos){
+		short getDistance(Point2D prevPos, Point2D nextPos)
+		{
 			short distance = 0;
-			if(prevPos.x-nextPos.x != 0 && prevPos.y-nextPos.y != 0){
+			
+			if ( prevPos.x - nextPos.x != 0 && prevPos.y - nextPos.y != 0 )
+			{
 				distance = 3;
-			} else if(prevPos.x-nextPos.x != 0 || prevPos.y-nextPos.y != 0){
+			}
+			else if ( prevPos.x - nextPos.x != 0 || prevPos.y - nextPos.y != 0 )
+			{
 				distance = 2;
 			}
 			return distance;
 		}
 
-		Point2D nextStepToFinish(Point2D goalPos)
+		Point2D getNextPos(const Point2D& goalPos)
 		{
-			EOrientation backwardDirection = GetBackwardDirection();
-			Point2D nextPos(position.x + getSign(goalPos.x - position.x),
-							position.y + getSign(goalPos.y - position.y));
-			SetDirection(position,nextPos);				
+			Point2D			nextPos( position.x + getSign(goalPos.x - position.x),
+			position.y + getSign(goalPos.y - position.y) );
+			
+			// get nearest possible move, sort all adjacent cells by distance and get the closest that is ok!
+			
+			return nextPos;
+		}
+
+		Point2D nextStepToFinish(const Point2D& goalPos)
+		{
+			EOrientation	backwardDirection = GetBackwardDirection();
+			Point2D			nextPos( this->getNextPos( goalPos ) );
+			
+			SetDirection( position, nextPos );				
 			//TODO: Check is obstacle or maybe is visited
-			if(CheckIfDirectionIsTraversable()){
+			
+			if ( CheckIfDirectionIsTraversable() )
+			{
 				return nextPos;
 			}
+			
+			// We are on an obstacle, look for a way around!
 			EOrientation startOrientation = orientation;
 			
 			do
 			{
 				//45 degrees
 				turn_half_right(1);
-				int angle = GetRobotAngle(); 
-				angle -= 45;
-				if(angle <-90) angle = 225;
-				SetDeviceOrientation(angle);
-			}while(orientation != startOrientation && (!CheckIfDirectionIsTraversable() || backwardDirection == orientation));
+				
+				int angle = GetRobotAngle() - 45; 
+				
+				if ( angle < -90 )
+				{
+					angle = 225;
+				}
+				SetDeviceOrientation( angle );
+			}
+			while( orientation != startOrientation && ( !CheckIfDirectionIsTraversable() || backwardDirection == orientation ) );
 			
 			EOrientation finalOrientation = backwardDirection;
-			if(startOrientation != orientation){
+			if ( startOrientation != orientation )
+			{
 				finalOrientation = orientation;
 			}
-			nextPos = GetNextStepByOrientation(finalOrientation);
-			SetDirection(position,nextPos);
+			
+			nextPos = GetNextStepByOrientation( finalOrientation );
+			SetDirection( position, nextPos );
 			return nextPos;
 		}
 		
@@ -326,7 +353,7 @@ class Robot
 				case EOrientation::North:		return Point2D(position.x, position.y+1);
 				case EOrientation::NorthWest:	return Point2D(position.x-1, position.y+1);
 				case EOrientation::West:		return Point2D(position.x-1, position.y);
-				case EOrientation::SouthWest:   return Point2D(position.x-1, position.y-1);
+				case EOrientation::SouthWest:	return Point2D(position.x-1, position.y-1);
 			}			
 			
 			return position;
@@ -343,7 +370,7 @@ class Robot
 				case EOrientation::North:		return EOrientation::South;
 				case EOrientation::NorthWest:	return EOrientation::SouthEast;
 				case EOrientation::West:		return EOrientation::East;
-				case EOrientation::SouthWest:   return EOrientation::NorthEast;
+				case EOrientation::SouthWest:	return EOrientation::NorthEast;
 			}
 		}
 		
@@ -351,9 +378,19 @@ class Robot
 		{
 			unsigned int	sensors[ 5 ]; 
 			read_line_sensors( sensors, IR_EMITTERS_ON );
-			if(sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE){
+			
+			if ( sensors[ 1 ] > OBSTACLE_VALUE || sensors[ 2 ] > OBSTACLE_VALUE || sensors[ 3 ] > OBSTACLE_VALUE )
+			{
+				clear();
+				print("!OBS!");
+				delay_ms(2000);
 				return false;
 			}
+			
+			clear();
+			print("NOT OBS");
+			delay_ms(2000);
+			
 			return true;
 		}
 
@@ -362,21 +399,21 @@ class Robot
 		{
 			Point2D nextPos = nextStepToFinish( goalPos );
 			
-			printPos(nextPos.x, nextPos.y);
-			
+			printPos( nextPos.x, nextPos.y );
+			delay_ms(2000);
 			// delay_ms(1000);
 			
 			//Set position in matrix only if it is NULL
-			if(matrix[nextPos.x][nextPos.y]/* == NULL*/){ // @TODO: How to check is it visited
-				
-				matrix[nextPos.x][nextPos.y] = Cell();
+			if ( matrix[ nextPos.x ][ nextPos.y ].distToFinish != INT_MAX/* == NULL*/)
+			{ // @TODO: How to check is it visited
 				matrix[nextPos.x][nextPos.y].distToStart = matrix[position.x][position.y].distToStart +
 					getDistance(position, nextPos);
 					
 			}
 			
 			//Move only when are not at goal
-			if (position.x != goalPos.x || position.y != goalPos.y){
+			if ( position.x != goalPos.x || position.y != goalPos.y )
+			{
 
 				position = nextPos;
 				move_forward();
@@ -421,6 +458,117 @@ class Robot
 			delay_ms( 1000 );
 		}
 		
+		void reverseDirection()
+		{
+			this->calculateDistToFinish();
+			
+			// swap dist to start with dist to finish and find start pos
+			Point2D startPos( finishPos );
+			
+			for ( short i = 0; i < MAX_ROWS; i++ )
+			{
+				for ( short j = 0; j < MAX_ROWS; j++ )
+				{	
+					if ( /*matrix[ i ][ j ].isVisited*/true )
+					{
+						if ( matrix[ i ][ j ].distToStart == 0 )
+						{
+							// start pos, save it.
+							startPos = Point2D( i, j );
+						}
+						
+						short tmp						= matrix[ i ][ j ].distToFinish;
+						matrix[ i ][ j ].distToFinish	= matrix[ i ][ j ].distToStart;
+						matrix[ i ][ j ].distToStart	= tmp;
+					}
+				}
+			}
+			
+			// Finally, make the start pos our next finish pos
+			finishPos = startPos;
+		}
+		
+		void calculateDistToFinish()
+		{
+			Point2D currentPos( finishPos );
+			short	dist = matrix[ finishPos.x ][ finishPos.y ].distToStart;
+			
+			while ( matrix[ currentPos.x ][ currentPos.y ].distToStart != 0  )
+			{
+				Cell& currCell( matrix[ currentPos.x ][ currentPos.y ] );
+				
+				if ( currCell.distToFinish < dist - currCell.distToStart )
+				{
+					currCell.distToFinish = dist - currCell.distToStart;
+				}
+				
+				currentPos = this->getNearestToStartAdjecent( currentPos );
+			}
+			
+			Cell& currCell( matrix[ currentPos.x ][ currentPos.y ] );
+			
+			if ( currCell.distToFinish < dist - currCell.distToStart )
+			{
+				currCell.distToFinish = dist - currCell.distToStart;
+			}
+		}
+		
+		Point2D getNearestToStartAdjecent(const Point2D& currentPos)
+		{
+			Point2D nearestPos( currentPos );
+			short	minDist = matrix[ currentPos.x ][ currentPos.y ].distToStart;
+			
+			if ( matrix[ currentPos.x - 1 ][ currentPos.y - 1 ].distToStart < minDist )
+			{
+				nearestPos	= Point2D( currentPos.x - 1, currentPos.y - 1 );
+				minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
+			}
+			
+			if ( matrix[ currentPos.x ][ currentPos.y - 1 ].distToStart < minDist )
+			{
+				nearestPos	= Point2D( currentPos.x, currentPos.y - 1 );
+				minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
+			}
+			
+			if ( matrix[ currentPos.x + 1 ][ currentPos.y - 1 ].distToStart < minDist )
+			{
+				nearestPos	= Point2D( currentPos.x + 1, currentPos.y - 1 );
+				minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
+			}
+			
+			if ( matrix[ currentPos.x - 1 ][ currentPos.y ].distToStart < minDist )
+			{
+				nearestPos	= Point2D( currentPos.x - 1, currentPos.y );
+				minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
+			}
+			
+			if ( matrix[ currentPos.x + 1 ][ currentPos.y ].distToStart < minDist )
+			{
+				nearestPos	= Point2D( currentPos.x + 1, currentPos.y );
+				minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
+			}
+			
+			if ( matrix[ currentPos.x - 1 ][ currentPos.y + 1 ].distToStart < minDist )
+			{
+				nearestPos	= Point2D( currentPos.x - 1, currentPos.y + 1 );
+				minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
+			}
+			
+			if ( matrix[ currentPos.x ][ currentPos.y + 1 ].distToStart < minDist )
+			{
+				nearestPos	= Point2D( currentPos.x, currentPos.y + 1 );
+				minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
+			}
+			
+			if ( matrix[ currentPos.x + 1 ][ currentPos.y + 1 ].distToStart < minDist )
+			{
+				nearestPos	= Point2D( currentPos.x + 1, currentPos.y + 1 );
+				minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
+			}
+			
+			return nearestPos;
+		}
+		
 	private:
 		Point2D			position;
 		EOrientation	orientation;
@@ -436,9 +584,9 @@ int main()
 	Robot robot;
 	// set up the 3pi
 	robot.initialize();
-	//test_sensors();
-	robot.mainRobotLogic();
 	
+	robot.mainRobotLogic();
+	//robot.test_sensors();
 	// Set Down of the robot.
 	set_motors( 0, 0 );
 	while ( true )
