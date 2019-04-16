@@ -10,6 +10,7 @@
 #include <stdlib.h>
 // Constants
 const short MAX_ROWS = 15; // matrix dimensions
+const int OBSTACLE_VALUE = 1200; //@TODO: SET REAL VALUE
 const int MARKER_VALUE = 350;
 #define PI 3.14159265
 // Structures and classes
@@ -45,6 +46,12 @@ struct Cell
 	, distToFinish( INT_MAX )
 	, isObstacle( false )
 	{}
+		
+	void operator = (const Cell &c ) { 
+		distToStart = c.distToStart;
+		distToFinish = c.distToFinish;
+		isObstacle = c.isObstacle;
+	}
 	
 	// Inner fields
 	short distToStart;
@@ -77,51 +84,28 @@ class Robot
 		// Our main logic function
 		void mainRobotLogic()
 		{
-			unsigned int	sensors[ 5 ]; // an array to hold sensor values
-			bool			moving		= true; // This flag tells us if we have to look for the marker color. If it is 1, we are on a marker and have to decide where to go.
 			bool			isLastStep	= false;
 			
 			while ( position.x != finishPos.x || position.y != finishPos.y || isLastStep )
 			{
-				read_line_sensors( sensors, IR_EMITTERS_ON );
-
-				if ( sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE ) // is_on_marker(sensors)
+										
+				stepToGoal( finishPos );
+				
+				if ( isLastStep )
 				{
-					if ( moving )
-					{
-						// Decide where to go next
-						play( ">>a32" );
-						moving = false;
-						
-						delay_ms( 500 );
-						set_motors( 0, 0 );
-						
-						stepToGoal( finishPos );
-						
-						if ( isLastStep )
-						{
-							isLastStep = false;
-						}
-						else if ( position.x == finishPos.x && position.y == finishPos.y )
-						{
-							isLastStep = true;
-						}
-					}
+					isLastStep = false;
 				}
-				else
+				else if ( position.x == finishPos.x && position.y == finishPos.y )
 				{
-					moving = true;
+					isLastStep = true;
 				}
 				
-				set_motors( 20, 20 );
 			}
 		}
 		
 		// Tests data returned from the sensors
 		void test_sensors()
-		{
-			unsigned int	sensors[ 5 ]; // an array to hold sensor values
-			
+		{			
 			while ( true )
 			{
 				read_line_sensors( sensors, IR_EMITTERS_ON );
@@ -156,6 +140,30 @@ class Robot
 		void turn_half_right(short turns)
 		{
 			make_turn( 42, -42, turns );
+		}
+		
+		void move_forward(){
+			set_motors( 20, 20 );
+			
+			while(!is_on_marker()){}
+			
+			play( ">>a32" );
+			delay_ms( 500 );
+			set_motors( 0, 0 );
+		}
+		
+		bool is_on_marker()
+		{
+			read_line_sensors( sensors, IR_EMITTERS_ON );
+			if ( sensors[1] > OBSTACLE_VALUE || sensors[2] > OBSTACLE_VALUE || sensors[3] > OBSTACLE_VALUE ) // there is obstacle
+			{
+				matrix[position.x][position.y].isObstacle = true;
+				return true;
+			} else if ( sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE ) // there is marker
+			{
+				return true;
+			}
+			return false;
 		}
 		
 		int GetRobotAngle()
@@ -253,7 +261,7 @@ class Robot
 
 		short getSign(short num)
 		{
-			short sign;
+			short sign = 0;
 			if ( num > 0 )
 			{
 				sign = 1;
@@ -262,18 +270,25 @@ class Robot
 			{
 				sign = -1;
 			}
-			else
-			{
-				sign = 0;
-			}
 			return sign;
+		}
+
+		// !!!Only for one step!!!!
+		short getDistance(Point2D prevPos, Point2D nextPos){
+			short distance = 0;
+			if(prevPos.x-nextPos.x != 0 && prevPos.y-nextPos.y != 0){
+				distance = 3;
+			} else if(prevPos.x-nextPos.x != 0 || prevPos.y-nextPos.y != 0){
+				distance = 2;
+			}
+			return distance;
 		}
 
 		Point2D nextStepToFinish(Point2D goalPos)
 		{
 			EOrientation backwardDirection = GetBackwardDirection();
-			Point2D nextPos(position.x + getSign(finishPos.x - position.x),
-							position.y + getSign(finishPos.y - position.y));
+			Point2D nextPos(position.x + getSign(goalPos.x - position.x),
+							position.y + getSign(goalPos.y - position.y));
 			SetDirection(position,nextPos);				
 			//TODO: Check is obstacle or maybe is visited
 			if(CheckIfDirectionIsTraversable()){
@@ -341,22 +356,40 @@ class Robot
 			}
 			return true;
 		}
+
 		
 		void stepToGoal(Point2D goalPos)
 		{
 			Point2D nextPos = nextStepToFinish( goalPos );
 			
-			clear();
-			print("(");
-			print_long( nextPos.x );
-			print(", ");
-			print_long( nextPos.y );
-			print(")");
+			printPos(nextPos.x, nextPos.y);
 			
 			// delay_ms(1000);
 			
-			//SetDirection( position, nextPos );
-			position = nextPos;
+			//Set position in matrix only if it is NULL
+			if(matrix[nextPos.x][nextPos.y]/* == NULL*/){ // @TODO: How to check is it visited
+				
+				matrix[nextPos.x][nextPos.y] = Cell();
+				matrix[nextPos.x][nextPos.y].distToStart = matrix[position.x][position.y].distToStart +
+					getDistance(position, nextPos);
+					
+			}
+			
+			//Move only when are not at goal
+			if (position.x != goalPos.x || position.y != goalPos.y){
+
+				position = nextPos;
+				move_forward();
+			}
+		}
+		
+		void printPos(short x, short y){
+			clear();
+			print("(");
+			print_long( x );
+			print(", ");
+			print_long( y );
+			print(")");
 		}
 		
 		void doMenu()
@@ -374,12 +407,7 @@ class Robot
 					finishPos.y = ( finishPos.y + 1 ) % MAX_ROWS;
 				}
 				
-				clear ();
-				print( "(" );
-				print_long( finishPos.x );
-				print( ", " );
-				print_long( finishPos.y );
-				print( ")" );
+				printPos(finishPos.x, finishPos.y);
 				
 				lcd_goto_xy( 0, 1 );
 				print( " A B C " );
@@ -397,6 +425,8 @@ class Robot
 		Point2D			position;
 		EOrientation	orientation;
 		Point2D			finishPos;
+		unsigned int	sensors[ 5 ]; // an array to hold sensor values
+		
 };
 
 // This is the main function, where the code starts.  All C programs
