@@ -57,6 +57,8 @@ struct Cell
 	short distToStart;
 	short distToFinish;
 	bool isObstacle;
+	bool isUsed;
+	Point2D* parent;
 };
 
 Cell matrix[ MAX_ROWS ][ MAX_ROWS ];
@@ -290,56 +292,99 @@ class Robot
 			return distance;
 		}
 
+		int childernNodesCoords [2][8] = {{1,1,1,0,0,-1,-1,-1},{0,-1,1,1,-1,0,1,-1}};
+
 		Point2D getNextPos(const Point2D& goalPos)
 		{
-			Point2D			nextPos( position.x + getSign(goalPos.x - position.x),
-			position.y + getSign(goalPos.y - position.y) );
+			//Point2D			nextPos( position.x + getSign(goalPos.x - position.x),
+			//position.y + getSign(goalPos.y - position.y) );
 			
+			Point2D nextPos(-1,-1);
+			for(int i=0; i<8; i++)
+			{
+				short x = position.x + childernNodesCoords[i][0];
+				short y = position.y + childernNodesCoords[i][1];
+				if(x < 0 || x > MAX_ROWS || y < 0 || y > MAX_ROWS || matrix[x][y].isObstacle || matrix[x][y].isUsed) continue;
+				
+				Point2D tempPos(x,y);
+				if(nextPos.x == -1)
+				{
+					nextPos.x = x;
+					nextPos.y = y;	
+				}
+				else if(HeuristicDist(nextPos,goalPos) > HeuristicDist(tempPos,goalPos))
+				{
+					nextPos = tempPos;
+				}
+			}
 			// get nearest possible move, sort all adjacent cells by distance and get the closest that is ok!
 			
 			return nextPos;
 		}
+		//moje da promenim izchislenieto
+		short HeuristicDist(const Point2D& start, const Point2D& end)
+		{
+			return abs(start.x - end.x) + abs(start.y - end.y);
+		}
 
 		Point2D nextStepToFinish(const Point2D& goalPos)
 		{
-			EOrientation	backwardDirection = GetBackwardDirection();
-			Point2D			nextPos( this->getNextPos( goalPos ) );
-			
-			SetDirection( position, nextPos );				
-			//TODO: Check is obstacle or maybe is visited
-			
-			if ( CheckIfDirectionIsTraversable() )
+			//EOrientation	backwardDirection = GetBackwardDirection();
+			Point2D nextPos(-1,-1);
+			int count = 0;
+			while(count < 8)
 			{
-				return nextPos;
-			}
+				count ++;
+				nextPos = this->getNextPos( goalPos );
 			
-			// We are on an obstacle, look for a way around!
-			EOrientation startOrientation = orientation;
-			
-			do
-			{
-				//45 degrees
-				turn_half_right(1);
-				
-				int angle = GetRobotAngle() - 45; 
-				
-				if ( angle < -90 )
+				//appropriate next node not found
+				if(nextPos.x == -1)
 				{
-					angle = 225;
+					//if prevPos == NULL, we are at beginning print impassable matrix
+					nextPos = *matrix[position.x][position.y].parent;
 				}
-				SetDeviceOrientation( angle );
-			}
-			while( orientation != startOrientation && ( !CheckIfDirectionIsTraversable() || backwardDirection == orientation ) );
 			
-			EOrientation finalOrientation = backwardDirection;
-			if ( startOrientation != orientation )
-			{
-				finalOrientation = orientation;
+				SetDirection( position, nextPos );				
+				//TODO: Check is obstacle or maybe is visited
+			
+				if ( CheckIfDirectionIsTraversable() )
+				{
+					return nextPos;
+				}
+				else
+				{
+					matrix[nextPos.x][nextPos.y].isObstacle = true;	
+				}
 			}
 			
-			nextPos = GetNextStepByOrientation( finalOrientation );
-			SetDirection( position, nextPos );
 			return nextPos;
+			// We are on an obstacle, look for a way around!
+			//EOrientation startOrientation = orientation;
+			//
+			//do
+			//{
+				////45 degrees
+				//turn_half_right(1);
+				//
+				//int angle = GetRobotAngle() - 45; 
+				//
+				//if ( angle < -90 )
+				//{
+					//angle = 225;
+				//}
+				//SetDeviceOrientation( angle );
+			//}
+			//while( orientation != startOrientation && ( !CheckIfDirectionIsTraversable() || backwardDirection == orientation ) );
+			//
+			//EOrientation finalOrientation = backwardDirection;
+			//if ( startOrientation != orientation )
+			//{
+				//finalOrientation = orientation;
+			//}
+			//
+			//nextPos = GetNextStepByOrientation( finalOrientation );
+			//SetDirection( position, nextPos );
+			//return nextPos;
 		}
 		
 		Point2D GetNextStepByOrientation(EOrientation orientation)
@@ -398,7 +443,8 @@ class Robot
 		void stepToGoal(Point2D goalPos)
 		{
 			Point2D nextPos = nextStepToFinish( goalPos );
-			
+			*matrix[nextPos.x][nextPos.y].parent = position;
+			matrix[nextPos.x][nextPos.y].isUsed = true;
 			printPos( nextPos.x, nextPos.y );
 			delay_ms(2000);
 			// delay_ms(1000);
