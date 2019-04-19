@@ -446,7 +446,6 @@ class Robot
 		{
 			Point2D nextPos = nextStepToFinish( goalPos );
 			*matrix[nextPos.x][nextPos.y].parent = position;
-			matrix[nextPos.x][nextPos.y].isVisited = true;
 			printPos( nextPos.x, nextPos.y );
 			delay_ms(2000);
 			// delay_ms(1000);
