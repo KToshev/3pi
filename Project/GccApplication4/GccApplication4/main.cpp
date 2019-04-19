@@ -45,6 +45,7 @@ struct Cell
 	: distToStart( INT_MAX )
 	, distToFinish( INT_MAX )
 	, isObstacle( false )
+	, isVisited( false )
 	{}
 		
 	void operator = (const Cell &c ) { 
@@ -57,6 +58,7 @@ struct Cell
 	short distToStart;
 	short distToFinish;
 	bool isObstacle;
+	bool isVisited;
 };
 
 Cell matrix[ MAX_ROWS ][ MAX_ROWS ];
@@ -404,13 +406,13 @@ class Robot
 			// delay_ms(1000);
 			
 			//Set position in matrix only if it is NULL
-			if ( matrix[ nextPos.x ][ nextPos.y ].distToFinish != INT_MAX/* == NULL*/)
+			if ( !matrix[ nextPos.x ][ nextPos.y ].isVisited)
 			{ // @TODO: How to check is it visited
 				matrix[nextPos.x][nextPos.y].distToStart = matrix[position.x][position.y].distToStart +
 					getDistance(position, nextPos);
-					
+				matrix[nextPos.x][nextPos.y].isVisited = true;
 			}
-			
+						
 			//Move only when are not at goal
 			if ( position.x != goalPos.x || position.y != goalPos.y )
 			{
@@ -418,6 +420,7 @@ class Robot
 				position = nextPos;
 				move_forward();
 			}
+			
 		}
 		
 		void printPos(short x, short y){
