@@ -49,17 +49,17 @@ struct Cell
 	{}
 		
 	void operator = (const Cell &c ) { 
-		distToStart = c.distToStart;
-		distToFinish = c.distToFinish;
-		isObstacle = c.isObstacle;
+		distToStart		= c.distToStart;
+		distToFinish	= c.distToFinish;
+		isObstacle		= c.isObstacle;
 	}
 	
 	// Inner fields
-	short distToStart;
-	short distToFinish;
-	bool isObstacle;
-	Point2D* parent;
-	bool isVisited;
+	short		distToStart;
+	short		distToFinish;
+	bool		isObstacle;
+	Point2D*	parent;
+	bool		isVisited;
 
 };
 
@@ -116,7 +116,7 @@ class Robot
 				read_line_sensors( sensors, IR_EMITTERS_ON );
 				
 				// Display the sensor results
-				for( short i = 0; i < 5; i++ )
+				for ( short i = 0; i < 5; i++ )
 				{
 					print_long( sensors[ i ] );
 					delay_ms( 500 );
@@ -147,10 +147,11 @@ class Robot
 			make_turn( 42, -42, turns );
 		}
 		
-		void move_forward(){
+		void move_forward()
+		{
 			set_motors( 20, 20 );
 			
-			while(!is_on_marker()){}
+			while ( !is_on_marker() ){}
 			
 			play( ">>a32" );
 			delay_ms( 900 );
@@ -162,9 +163,10 @@ class Robot
 			read_line_sensors( sensors, IR_EMITTERS_ON );
 			if ( sensors[1] > OBSTACLE_VALUE || sensors[2] > OBSTACLE_VALUE || sensors[3] > OBSTACLE_VALUE ) // there is obstacle
 			{
-				matrix[position.x][position.y].isObstacle = true;
+				matrix[ position.x ][ position.y ].isObstacle = true;
 				return true;
-			} else if ( sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE ) // there is marker
+			}
+			else if ( sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE ) // there is marker
 			{
 				return true;
 			}
@@ -301,20 +303,25 @@ class Robot
 			//Point2D			nextPos( position.x + getSign(goalPos.x - position.x),
 			//position.y + getSign(goalPos.y - position.y) );
 			
-			Point2D nextPos(-1,-1);
-			for(int i=0; i<8; i++)
+			Point2D nextPos( -1, -1 );
+			
+			for ( int i = 0; i < 8; i++ )
 			{
 				short x = position.x + childernNodesCoords[i][0];
 				short y = position.y + childernNodesCoords[i][1];
-				if(x < 0 || x > MAX_ROWS || y < 0 || y > MAX_ROWS || matrix[x][y].isObstacle || matrix[x][y].isVisited) continue;
+				
+				if ( x < 0 || x > MAX_ROWS || y < 0 || y > MAX_ROWS || matrix[x][y].isObstacle || matrix[x][y].isVisited )
+				{
+					continue;
+				}
 				
 				Point2D tempPos(x,y);
-				if(nextPos.x == -1)
+				if ( nextPos.x == -1 )
 				{
 					nextPos.x = x;
 					nextPos.y = y;	
 				}
-				else if(HeuristicDist(nextPos,goalPos) > HeuristicDist(tempPos,goalPos))
+				else if ( HeuristicDist( nextPos, goalPos ) > HeuristicDist( tempPos, goalPos ) )
 				{
 					nextPos = tempPos;
 				}
@@ -332,18 +339,19 @@ class Robot
 		Point2D nextStepToFinish(const Point2D& goalPos)
 		{
 			//EOrientation	backwardDirection = GetBackwardDirection();
-			Point2D nextPos(-1,-1);
-			int count = 0;
-			while(count < 8)
+			Point2D	nextPos( -1, -1 );
+			int		count = 0;
+			
+			while ( count < 8 )
 			{
 				count ++;
 				nextPos = this->getNextPos( goalPos );
 			
 				//appropriate next node not found
-				if(nextPos.x == -1)
+				if ( nextPos.x == -1 )
 				{
 					//if prevPos == NULL, we are at beginning print impassable matrix
-					nextPos = *matrix[position.x][position.y].parent;
+					nextPos = *matrix[ position.x ][ position.y ].parent;
 				}
 			
 				SetDirection( position, nextPos );				
@@ -355,7 +363,7 @@ class Robot
 				}
 				else
 				{
-					matrix[nextPos.x][nextPos.y].isObstacle = true;	
+					matrix[ nextPos.x ][ nextPos.y ].isObstacle = true;	
 				}
 			}
 			
@@ -451,17 +459,22 @@ class Robot
 			// delay_ms(1000);
 			
 			//Set position in matrix only if it is NULL
-			if ( !matrix[ nextPos.x ][ nextPos.y ].isVisited)
+			if ( !matrix[ nextPos.x ][ nextPos.y ].isVisited )
 			{ // @TODO: How to check is it visited
-				matrix[nextPos.x][nextPos.y].distToStart = matrix[position.x][position.y].distToStart +
-					getDistance(position, nextPos);
+				short savedDist	= matrix[ nextPos.x ][ nextPos.y ].distToStart;
+				short currDist	= matrix[ position.x ][ position.y ].distToStart + getDistance( position, nextPos );
+				
+				if ( savedDist > currDist )
+				{
+					matrix[ nextPos.x ][ nextPos.y ].distToStart = currDist;
+				}
+
 				matrix[nextPos.x][nextPos.y].isVisited = true;
 			}
 						
 			//Move only when are not at goal
 			if ( position.x != goalPos.x || position.y != goalPos.y )
 			{
-
 				position = nextPos;
 				move_forward();
 			}
