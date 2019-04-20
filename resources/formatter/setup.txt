@@ -1,0 +1,8 @@
+1. Execute and install AStyleExtension.vsix
+2. Open Atmel Studio
+3. Tools -> Options -> AStyle Formatter
+4. Select Format on save
+5. Click on Export/Import
+6. Click on Import
+7. Import settings.cfg
+8. Enjoy
