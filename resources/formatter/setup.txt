@@ -5,3 +5,5 @@
 5. Click on Import
 6. Import settings.cfg
 7. Enjoy
+
+Documentation: http://astyle.sourceforge.net/astyle.html
