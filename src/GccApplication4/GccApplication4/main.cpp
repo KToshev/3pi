@@ -38,6 +38,11 @@ class Point2D
             : x( inX )
             , y ( inY )
         {}
+
+        bool operator==( const Point2D& pt ) const
+        {
+            return x == pt.x && y == pt.y;
+        }
 };
 
 class Cell
@@ -45,7 +50,7 @@ class Cell
     public:
         short		distToStart;
         short		distToFinish;
-        bool		isObstacle;
+        bool		isObstacle; // instead, add a set of Point2D that contains the unreachable adjacent points?
         Point2D*	parent;
         bool		isVisited;
 
@@ -64,6 +69,7 @@ class Cell
         }
 };
 
+typedef short ( *getDistFunc )( const Point2D&, const Point2D& );
 Cell matrix[ MAX_ROWS ][ MAX_ROWS ];
 
 class Robot
@@ -348,46 +354,68 @@ class Robot
             return distance;
         }
 
-        int childernNodesCoords [2][8] = {{1, 1, 1, 0, 0, -1, -1, -1}, {0, -1, 1, 1, -1, 0, 1, -1}};
-
-        Point2D getNextPos( const Point2D& goalPos )
+        Point2D getClosestAdjacent( const Point2D& from, const Point2D& to, getDistFunc getDist )
         {
-            //Point2D			nextPos( position.x + getSign(goalPos.x - position.x),
-            //position.y + getSign(goalPos.y - position.y) );
+            short	adjacentOffsets [2][8]	= {{1, 1, 1, 0, 0, -1, -1, -1}, {0, -1, 1, 1, -1, 0, 1, -1}};
+            short	minDist					= getDist( from, to );
+            Point2D	minPos( from );
 
-            Point2D nextPos( -1, -1 );
-
-            for ( int i = 0; i < 8; i++ )
+            for ( short i = 0; i < 8; i++ )
             {
-                short x = position.x + childernNodesCoords[i][0];
-                short y = position.y + childernNodesCoords[i][1];
+                Point2D currPos( from.x + adjacentOffsets[ 0 ][ i ],
+                                 from.y + adjacentOffsets[ 1 ][ i ] );
+                short	currDist = getDist( currPos, to );
 
-                if ( x < 0 || x > MAX_ROWS || y < 0 || y > MAX_ROWS || matrix[x][y].isObstacle || matrix[x][y].isVisited )
+                if ( currDist < minDist )
                 {
-                    continue;
-                }
-
-                Point2D tempPos( x, y );
-
-                if ( nextPos.x == -1 )
-                {
-                    nextPos.x = x;
-                    nextPos.y = y;
-                }
-                else if ( heuristicDist( nextPos, goalPos ) > heuristicDist( tempPos, goalPos ) )
-                {
-                    nextPos = tempPos;
+                    minDist = currDist;
+                    minPos	= currPos;
                 }
             }
 
-            // Get nearest possible move, sort all adjacent cells by distance and get the closest that is ok
-
-            return nextPos;
+            return minPos;
         }
 
-        short heuristicDist( const Point2D& start, const Point2D& end )
+        Point2D getNextPos( const Point2D& goalPos )
         {
-            return abs( start.x - end.x ) + abs( start.y - end.y );
+            // Define dist lambda
+            auto getNextDist = []( const Point2D & pos, const Point2D & goal ) -> short
+            {
+                short result = SHRT_MAX;
+
+                if ( Robot::isValidPos( pos ) &&
+                        !matrix[ pos.x ][ pos.y ].isObstacle && !matrix[ pos.x ][ pos.y ].isVisited )
+                {
+                    result = abs( goal.x - pos.x ) + abs( goal.y - pos.y );
+                }
+
+                return result;
+            };
+
+            // Get next pos using the lambda from above
+            Point2D nextPos( this->getClosestAdjacent( position, goalPos, getNextDist ) );
+
+            if ( nextPos == position )
+            {
+                // Could not find next pos with getNextDist, try with getDistToStart
+                // Define dist lambda
+                auto getDistToStart = []( const Point2D & pos, const Point2D & tmp ) -> short
+                {
+                    short result = SHRT_MAX;
+
+                    if ( Robot::isValidPos( pos ) )
+                    {
+                        result = matrix[ pos.x ][ pos.y ].distToStart;
+                    }
+
+                    return result;
+                };
+
+                // Get next pos using the lambda from above
+                nextPos = this->getClosestAdjacent( position, position, getDistToStart );
+            }
+
+            return nextPos;
         }
 
         Point2D nextStepToFinish( const Point2D& goalPos )
@@ -534,7 +562,7 @@ class Robot
         }
 
 
-        void stepToGoal( Point2D goalPos )
+        void stepToGoal( const Point2D& goalPos )
         {
             Point2D nextPos = nextStepToFinish( goalPos );
             *matrix[nextPos.x][nextPos.y].parent = position;
@@ -545,8 +573,10 @@ class Robot
 
             if ( !matrix[ nextPos.x ][ nextPos.y ].isVisited )
             {
-                short savedDist	= matrix[ nextPos.x ][ nextPos.y ].distToStart;
-                short currDist	= matrix[ position.x ][ position.y ].distToStart + getDistance( position, nextPos );
+                // Update distToStart of nextPos based on the distToStart to the closest to the start adj pos.
+                Point2D	closestToStartAdj( this->getNearestToStartAdjacent( nextPos ) );
+                short	savedDist	= matrix[ nextPos.x ][ nextPos.y ].distToStart;
+                short	currDist	= matrix[ closestToStartAdj.x ][ closestToStartAdj.y ].distToStart + getDistance( closestToStartAdj, nextPos );
 
                 if ( savedDist > currDist )
                 {
@@ -614,7 +644,7 @@ class Robot
             {
                 for ( short j = 0; j < MAX_ROWS; j++ )
                 {
-                    if ( /*matrix[ i ][ j ].isVisited*/true )
+                    if ( matrix[ i ][ j ].isVisited )
                     {
                         if ( matrix[ i ][ j ].distToStart == 0 )
                         {
@@ -647,7 +677,7 @@ class Robot
                     currCell.distToFinish = dist - currCell.distToStart;
                 }
 
-                currentPos = this->getNearestToStartAdjecent( currentPos );
+                currentPos = this->getNearestToStartAdjacent( currentPos );
             }
 
             Cell& currCell( matrix[ currentPos.x ][ currentPos.y ] );
@@ -658,60 +688,26 @@ class Robot
             }
         }
 
-        Point2D getNearestToStartAdjecent( const Point2D& currentPos )
+        Point2D getNearestToStartAdjacent( const Point2D& currentPos )
         {
-            Point2D nearestPos( currentPos );
-            short	minDist = matrix[ currentPos.x ][ currentPos.y ].distToStart;
-
-            if ( matrix[ currentPos.x - 1 ][ currentPos.y - 1 ].distToStart < minDist )
+            auto getDistToStart = []( const Point2D & pos, const Point2D & tmp ) -> short
             {
-                nearestPos	= Point2D( currentPos.x - 1, currentPos.y - 1 );
-                minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
-            }
+                short result = SHRT_MAX;
 
-            if ( matrix[ currentPos.x ][ currentPos.y - 1 ].distToStart < minDist )
-            {
-                nearestPos	= Point2D( currentPos.x, currentPos.y - 1 );
-                minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
-            }
+                if ( Robot::isValidPos( pos ) && matrix[ pos.x ][ pos.y ].isVisited )
+                {
+                    result = matrix[ pos.x ][ pos.y ].distToStart;
+                }
 
-            if ( matrix[ currentPos.x + 1 ][ currentPos.y - 1 ].distToStart < minDist )
-            {
-                nearestPos	= Point2D( currentPos.x + 1, currentPos.y - 1 );
-                minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
-            }
+                return result;
+            };
 
-            if ( matrix[ currentPos.x - 1 ][ currentPos.y ].distToStart < minDist )
-            {
-                nearestPos	= Point2D( currentPos.x - 1, currentPos.y );
-                minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
-            }
+            return this->getClosestAdjacent( currentPos, currentPos, getDistToStart );
+        }
 
-            if ( matrix[ currentPos.x + 1 ][ currentPos.y ].distToStart < minDist )
-            {
-                nearestPos	= Point2D( currentPos.x + 1, currentPos.y );
-                minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
-            }
-
-            if ( matrix[ currentPos.x - 1 ][ currentPos.y + 1 ].distToStart < minDist )
-            {
-                nearestPos	= Point2D( currentPos.x - 1, currentPos.y + 1 );
-                minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
-            }
-
-            if ( matrix[ currentPos.x ][ currentPos.y + 1 ].distToStart < minDist )
-            {
-                nearestPos	= Point2D( currentPos.x, currentPos.y + 1 );
-                minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
-            }
-
-            if ( matrix[ currentPos.x + 1 ][ currentPos.y + 1 ].distToStart < minDist )
-            {
-                nearestPos	= Point2D( currentPos.x + 1, currentPos.y + 1 );
-                minDist		= matrix[ nearestPos.x ][ nearestPos.y ].distToStart;
-            }
-
-            return nearestPos;
+        static bool isValidPos( const Point2D& pos )
+        {
+            return pos.x >= 0 && pos.x < MAX_ROWS && pos.y >= 0 && pos.y < MAX_ROWS;
         }
 };
 
