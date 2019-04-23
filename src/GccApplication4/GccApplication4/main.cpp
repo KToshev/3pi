@@ -93,9 +93,13 @@ class Robot
             pololu_3pi_init( 2000 );
 
             set_motors( 0, 0 );
-
-            // Initialize the menu
-            this->initializeMenu();
+			
+			// Display battery voltage and wait two seconds
+			int bat = read_battery_millivolts();
+			clear();
+			print_long( bat );
+			print( "mV" );			
+			delay_ms( 2000 );
         }
 
         // Main logic function
@@ -607,7 +611,8 @@ class Robot
         }
 
         void initializeMenu()
-        {
+        {			
+			clear();
             while ( !button_is_pressed( BUTTON_B ) )
             {
                 if ( button_is_pressed( BUTTON_A ) )
@@ -632,6 +637,34 @@ class Robot
             wait_for_button_release( BUTTON_B );
             delay_ms( 1000 );
         }
+		
+		//Main program menu
+		void mainMenu()
+		{
+			clear();
+			print( " A - Test " ); 
+            lcd_goto_xy( 0, 1 );
+			print( " B - Main " );
+			
+			bool isSelectedProgram = false;
+			
+			while ( !isSelectedProgram )
+            {
+				if ( button_is_pressed( BUTTON_A ) )
+                {
+					wait_for_button_release( BUTTON_A ); //wait for the button to be released before run the program
+                    testSensors();
+                }
+
+                if ( button_is_pressed( BUTTON_B ) )
+                {
+					wait_for_button_release( BUTTON_B );//wait for the button to be released before run the program
+                    // mainRobotLogic the initialization menu
+					initializeMenu();
+					mainRobotLogic();
+                }
+			}
+		}
 
         void reverseDirection()
         {
@@ -718,7 +751,7 @@ int main()
     // Set up the 3pi
     robot.initialize();
 
-    robot.mainRobotLogic();
+	robot.mainMenu();
 
     set_motors( 0, 0 );
 
