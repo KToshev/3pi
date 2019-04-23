@@ -50,13 +50,12 @@ class Cell
     public:
         short		distToStart;
         short		distToFinish;
-        bool		isObstacle; // instead, add a set of Point2D that contains the unreachable adjacent points?
-        Point2D*	parent;
+        bool		isObstacle;
         bool		isVisited;
 
         Cell()
-            : distToStart( INT_MAX )
-            , distToFinish( INT_MAX )
+            : distToStart( SHRT_MAX )
+            , distToFinish( SHRT_MAX )
             , isObstacle( false )
             , isVisited( false )
         {}
@@ -82,9 +81,9 @@ class Robot
 
     public:
         Robot()
-            : position( 0, 0 )
+            : position( 5, 0 )
             , orientation( EOrientation::North )
-            , finishPos( 0, 3 )
+            , finishPos( 5, 3 )
         {}
 
         void initialize()
@@ -93,33 +92,32 @@ class Robot
             pololu_3pi_init( 2000 );
 
             set_motors( 0, 0 );
-			
-			// Display battery voltage and wait two seconds
-			int bat = read_battery_millivolts();
-			clear();
-			print_long( bat );
-			print( "mV" );			
-			delay_ms( 2000 );
+
+            // Display battery voltage and wait two seconds
+            unsigned short bat = read_battery_millivolts();
+            clear();
+            print_long( bat );
+            print( "mV" );
+            delay_ms( 2000 );
+
+            this->mainMenu();
         }
 
         // Main logic function
         void mainRobotLogic()
         {
-            bool isLastStep	= false;
+            matrix[ position.x ][ position.y ].distToStart	= 0;
+            matrix[ position.x ][ position.y ].isVisited	= true;
 
-            while ( position.x != finishPos.x || position.y != finishPos.y || isLastStep )
+            while ( position.x != finishPos.x || position.y != finishPos.y )
             {
                 stepToGoal( finishPos );
 
-                if ( isLastStep )
+                if ( position.x == finishPos.x && position.y == finishPos.y )
                 {
-                    isLastStep = false;
-
+                    matrix[ position.x ][ position.y ].distToFinish	= 0;
                     this->reverseDirection();
-                }
-                else if ( position.x == finishPos.x && position.y == finishPos.y )
-                {
-                    isLastStep = true;
+                    matrix[ position.x ][ position.y ].isVisited	= true;
                 }
             }
         }
@@ -166,7 +164,7 @@ class Robot
 
         void moveForward()
         {
-            set_motors( 20, 20 );
+            set_motors( 19, 19 );
 
             while ( !isOnMarker() ) {}
 
@@ -181,7 +179,6 @@ class Robot
 
             if ( sensors[1] > OBSTACLE_VALUE || sensors[2] > OBSTACLE_VALUE || sensors[3] > OBSTACLE_VALUE ) // there is obstacle
             {
-                matrix[ position.x ][ position.y ].isObstacle = true;
                 return true;
             }
             else if ( sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE ) // there is marker
@@ -401,6 +398,9 @@ class Robot
 
             if ( nextPos == position )
             {
+                clear();
+                print( "here" );
+                clear();
                 // Could not find next pos with getNextDist, try with getDistToStart
                 // Define dist lambda
                 auto getDistToStart = []( const Point2D & pos, const Point2D & tmp ) -> short
@@ -433,13 +433,6 @@ class Robot
                 count++;
                 nextPos = this->getNextPos( goalPos );
 
-                // There isn't an appropriate next node
-                if ( nextPos.x == -1 )
-                {
-                    // If prevPos == NULL, we are at the beginning, print impassable matrix
-                    nextPos = *matrix[ position.x ][ position.y ].parent;
-                }
-
                 setDirection( position, nextPos );
                 // TODO: Check isObstacle or maybe isVisited
 
@@ -454,33 +447,6 @@ class Robot
             }
 
             return nextPos;
-            // We are on an obstacle, look for a way around!
-            //EOrientation startOrientation = orientation;
-            //
-            //do
-            //{
-            ////45 degrees
-            //turn_half_right(1);
-            //
-            //int angle = GetRobotAngle() - 45;
-            //
-            //if ( angle < -90 )
-            //{
-            //angle = 225;
-            //}
-            //SetDeviceOrientation( angle );
-            //}
-            //while( orientation != startOrientation && ( !CheckIfDirectionIsTraversable() || backwardDirection == orientation ) );
-            //
-            //EOrientation finalOrientation = backwardDirection;
-            //if ( startOrientation != orientation )
-            //{
-            //finalOrientation = orientation;
-            //}
-            //
-            //nextPos = GetNextStepByOrientation( finalOrientation );
-            //SetDirection( position, nextPos );
-            //return nextPos;
         }
 
         Point2D getNextStepByOrientation( EOrientation orientation )
@@ -569,11 +535,9 @@ class Robot
         void stepToGoal( const Point2D& goalPos )
         {
             Point2D nextPos = nextStepToFinish( goalPos );
-            *matrix[nextPos.x][nextPos.y].parent = position;
 
             printPos( nextPos.x, nextPos.y );
             delay_ms( 2000 );
-            // delay_ms(1000);
 
             if ( !matrix[ nextPos.x ][ nextPos.y ].isVisited )
             {
@@ -611,8 +575,9 @@ class Robot
         }
 
         void initializeMenu()
-        {			
-			clear();
+        {
+            clear();
+
             while ( !button_is_pressed( BUTTON_B ) )
             {
                 if ( button_is_pressed( BUTTON_A ) )
@@ -637,39 +602,38 @@ class Robot
             wait_for_button_release( BUTTON_B );
             delay_ms( 1000 );
         }
-		
-		//Main program menu
-		void mainMenu()
-		{
-			clear();
-			print( " A - Test " ); 
+
+        //Main program menu
+        void mainMenu()
+        {
+            clear();
+            print( "A - Test" );
             lcd_goto_xy( 0, 1 );
-			print( " B - Main " );
-			
-			bool isSelectedProgram = false;
-			
-			while ( !isSelectedProgram )
+            print( "B - Main" );
+
+            bool isSelectedProgram = false;
+
+            while ( !isSelectedProgram )
             {
-				if ( button_is_pressed( BUTTON_A ) )
+                if ( button_is_pressed( BUTTON_A ) )
                 {
-					wait_for_button_release( BUTTON_A ); //wait for the button to be released before run the program
+                    wait_for_button_release( BUTTON_A ); //wait for the button to be released before run the program
                     testSensors();
                 }
 
                 if ( button_is_pressed( BUTTON_B ) )
                 {
-					wait_for_button_release( BUTTON_B );//wait for the button to be released before run the program
+                    wait_for_button_release( BUTTON_B );//wait for the button to be released before run the program
                     // mainRobotLogic the initialization menu
-					initializeMenu();
-					mainRobotLogic();
+                    initializeMenu();
+                    mainRobotLogic();
                 }
-			}
-		}
+            }
+        }
 
         void reverseDirection()
         {
             this->calculateDistToFinish();
-
             // Swap distance to start with distance to finish and find start position
             Point2D startPos( finishPos );
 
@@ -688,6 +652,7 @@ class Robot
                         short tmp						= matrix[ i ][ j ].distToFinish;
                         matrix[ i ][ j ].distToFinish	= matrix[ i ][ j ].distToStart;
                         matrix[ i ][ j ].distToStart	= tmp;
+                        matrix[ i ][ j ].isVisited		= false;
                     }
                 }
             }
@@ -750,8 +715,6 @@ int main()
 
     // Set up the 3pi
     robot.initialize();
-
-	robot.mainMenu();
 
     set_motors( 0, 0 );
 
