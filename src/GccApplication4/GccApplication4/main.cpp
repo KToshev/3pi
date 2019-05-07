@@ -9,9 +9,10 @@
 #include <stdlib.h>
 
 // Constants
-const short MAX_ROWS       = 15; // Matrix dimensions
-const int   OBSTACLE_VALUE = 1200; // TODO: Set real value
-const int   MARKER_VALUE   = 350;
+const short MAX_ROWS		= 15; // Matrix dimensions
+const short OBSTACLE_VALUE	= 1200; // TODO: Set real value
+const short MARKER_VALUE	= 350;
+const short CNT_LAPS		= 4;
 #define     PI               3.14159265
 
 bool doPrint = false;
@@ -80,12 +81,14 @@ class Robot
         EOrientation	orientation;
         Point2D			finishPos;
         unsigned int	sensors[ 5 ]; // An array to hold sensor values
+        short			lap;
 
     public:
         Robot()
             : position( 5, 0 )
             , orientation( EOrientation::North )
             , finishPos( 5, 3 )
+            , lap ( 0 )
         {}
 
         void initialize()
@@ -111,7 +114,7 @@ class Robot
             matrix[ position.x ][ position.y ].distToStart	= 0;
             matrix[ position.x ][ position.y ].isVisited	= true;
 
-            while ( position.x != finishPos.x || position.y != finishPos.y )
+            while ( ( position.x != finishPos.x || position.y != finishPos.y ) && lap <= CNT_LAPS )
             {
                 stepToGoal( finishPos );
 
@@ -121,6 +124,8 @@ class Robot
                     this->reverseDirection();
                     doPrint = true;
                     matrix[ position.x ][ position.y ].isVisited	= true;
+
+                    lap++;
                 }
             }
         }
@@ -446,7 +451,15 @@ class Robot
             while ( count < 8 )
             {
                 count++;
-                nextPos = this->getNextPos( goalPos );
+
+                if ( lap < CNT_LAPS )
+                {
+                    nextPos = this->getNextPos( goalPos );
+                }
+                else
+                {
+                    nextPos = this->getNearestToFinishAdjacent( position );
+                }
 
                 if ( !( position == nextPos ) )
                 {
@@ -808,6 +821,23 @@ class Robot
             };
 
             return this->getClosestAdjacent( currentPos, currentPos, getDistToStart );
+        }
+
+        Point2D getNearestToFinishAdjacent( const Point2D& currentPos )
+        {
+            auto getDistToFinish = []( const Point2D & pos, const Point2D & tmp ) -> short
+            {
+                short result = SHRT_MAX;
+
+                if ( Robot::isValidPos( pos ) && !matrix[ pos.x ][ pos.y ].isVisited )
+                {
+                    result = matrix[ pos.x ][ pos.y ].distToFinish;
+                }
+
+                return result;
+            };
+
+            return this->getClosestAdjacent( currentPos, currentPos, getDistToFinish );
         }
 
         static bool isValidPos( const Point2D& pos )
