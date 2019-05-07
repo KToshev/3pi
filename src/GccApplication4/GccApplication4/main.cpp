@@ -14,6 +14,8 @@ const int   OBSTACLE_VALUE = 1200; // TODO: Set real value
 const int   MARKER_VALUE   = 350;
 #define     PI               3.14159265
 
+bool doPrint = false;
+
 // Enums
 enum EOrientation
 {
@@ -98,7 +100,7 @@ class Robot
             clear();
             print_long( bat );
             print( "mV" );
-            delay_ms( 2000 );
+            delay_ms( 1000 );
 
             this->mainMenu();
         }
@@ -117,6 +119,7 @@ class Robot
                 {
                     matrix[ position.x ][ position.y ].distToFinish	= 0;
                     this->reverseDirection();
+                    doPrint = true;
                     matrix[ position.x ][ position.y ].isVisited	= true;
                 }
             }
@@ -357,15 +360,24 @@ class Robot
 
         Point2D getClosestAdjacent( const Point2D& from, const Point2D& to, getDistFunc getDist )
         {
-            short	adjacentOffsets [2][8]	= {{1, 1, 1, 0, 0, -1, -1, -1}, {0, -1, 1, 1, -1, 0, 1, -1}};
-            short	minDist					= getDist( from, to );
+            Point2D adjPts[8]	= this->getAdjacentPts();
+            short	minDist		= getDist( from, to );
             Point2D	minPos( from );
 
             for ( short i = 0; i < 8; i++ )
             {
-                Point2D currPos( from.x + adjacentOffsets[ 0 ][ i ],
-                                 from.y + adjacentOffsets[ 1 ][ i ] );
+                Point2D currPos( adjPts[ i ] );
                 short	currDist = getDist( currPos, to );
+
+                if ( doPrint )
+                {
+                    printPos( currPos.x, currPos.y );
+                    lcd_goto_xy( 0, 1 );
+                    print_long( currDist );
+                    print( " | " );
+                    print_long( minDist );
+                    delay_ms( 4000 );
+                }
 
                 if ( currDist < minDist )
                 {
@@ -373,6 +385,8 @@ class Robot
                     minPos	= currPos;
                 }
             }
+
+            doPrint = false;
 
             return minPos;
         }
@@ -400,6 +414,7 @@ class Robot
             {
                 clear();
                 print( "here" );
+                delay_ms( 1000 );
                 clear();
                 // Could not find next pos with getNextDist, try with getDistToStart
                 // Define dist lambda
@@ -433,7 +448,11 @@ class Robot
                 count++;
                 nextPos = this->getNextPos( goalPos );
 
-                setDirection( position, nextPos );
+                if ( !( position == nextPos ) )
+                {
+                    setDirection( position, nextPos );
+                }
+
                 // TODO: Check isObstacle or maybe isVisited
 
                 if ( isDirectionTraversable() )
@@ -449,9 +468,127 @@ class Robot
             return nextPos;
         }
 
-        Point2D getNextStepByOrientation( EOrientation orientation )
+        void getAdjacentPts( Point2D[8] result )
         {
             switch ( orientation )
+            {
+                case EOrientation::North:
+                {
+                    result = { this->getNextStepByOrientation( EOrientation::North ),
+                               this->getNextStepByOrientation( EOrientation::NorthEast ),
+                               this->getNextStepByOrientation( EOrientation::NorthWest ),
+                               this->getNextStepByOrientation( EOrientation::East ),
+                               this->getNextStepByOrientation( EOrientation::West ),
+                               this->getNextStepByOrientation( EOrientation::SouthEast ),
+                               this->getNextStepByOrientation( EOrientation::SouthWest ),
+                               this->getNextStepByOrientation( EOrientation::South )
+                             };
+                    break;
+                }
+
+                case EOrientation::NorthEast:
+                {
+                    result = { this->getNextStepByOrientation( EOrientation::NorthEast ),
+                               this->getNextStepByOrientation( EOrientation::East ),
+                               this->getNextStepByOrientation( EOrientation::North ),
+                               this->getNextStepByOrientation( EOrientation::SouthEast ),
+                               this->getNextStepByOrientation( EOrientation::NorthWest ),
+                               this->getNextStepByOrientation( EOrientation::South ),
+                               this->getNextStepByOrientation( EOrientation::West ),
+                               this->getNextStepByOrientation( EOrientation::SouthWest )
+                             };
+                    break;
+                }
+
+                case EOrientation::NorthWest:
+                {
+                    result = { this->getNextStepByOrientation( EOrientation::NorthWest ),
+                               this->getNextStepByOrientation( EOrientation::North ),
+                               this->getNextStepByOrientation( EOrientation::West ),
+                               this->getNextStepByOrientation( EOrientation::NorthEast ),
+                               this->getNextStepByOrientation( EOrientation::SouthWest ),
+                               this->getNextStepByOrientation( EOrientation::East ),
+                               this->getNextStepByOrientation( EOrientation::South ),
+                               this->getNextStepByOrientation( EOrientation::SouthEast )
+                             };
+                    break;
+                }
+
+                case EOrientation::East:
+                {
+                    result = { this->getNextStepByOrientation( EOrientation::East ),
+                               this->getNextStepByOrientation( EOrientation::SouthEast ),
+                               this->getNextStepByOrientation( EOrientation::NorthEast ),
+                               this->getNextStepByOrientation( EOrientation::South ),
+                               this->getNextStepByOrientation( EOrientation::North ),
+                               this->getNextStepByOrientation( EOrientation::SouthWest ),
+                               this->getNextStepByOrientation( EOrientation::NorthWest ),
+                               this->getNextStepByOrientation( EOrientation::West )
+                             };
+                    break;
+                }
+
+                case EOrientation::West:
+                {
+                    result = { this->getNextStepByOrientation( EOrientation::West ),
+                               this->getNextStepByOrientation( EOrientation::NorthWest ),
+                               this->getNextStepByOrientation( EOrientation::SouthWest ),
+                               this->getNextStepByOrientation( EOrientation::North ),
+                               this->getNextStepByOrientation( EOrientation::South ),
+                               this->getNextStepByOrientation( EOrientation::NorthEast ),
+                               this->getNextStepByOrientation( EOrientation::SouthEast ),
+                               this->getNextStepByOrientation( EOrientation::East )
+                             };
+                    break;
+                }
+
+                case EOrientation::SouthEast:
+                {
+                    result = { this->getNextStepByOrientation( EOrientation::SouthEast ),
+                               this->getNextStepByOrientation( EOrientation::South ),
+                               this->getNextStepByOrientation( EOrientation::East ),
+                               this->getNextStepByOrientation( EOrientation::SouthWest ),
+                               this->getNextStepByOrientation( EOrientation::NorthEast ),
+                               this->getNextStepByOrientation( EOrientation::West ),
+                               this->getNextStepByOrientation( EOrientation::North ),
+                               this->getNextStepByOrientation( EOrientation::NorthWest )
+                             };
+                    break;
+                }
+
+                case EOrientation::SouthWest:
+                {
+                    result = { this->getNextStepByOrientation( EOrientation::SouthWest ),
+                               this->getNextStepByOrientation( EOrientation::West ),
+                               this->getNextStepByOrientation( EOrientation::South ),
+                               this->getNextStepByOrientation( EOrientation::NorthWest ),
+                               this->getNextStepByOrientation( EOrientation::SouthEast ),
+                               this->getNextStepByOrientation( EOrientation::North ),
+                               this->getNextStepByOrientation( EOrientation::East ),
+                               this->getNextStepByOrientation( EOrientation::NorthEast )
+                             };
+                    break;
+                }
+
+                case EOrientation::South:
+                {
+                    result = { this->getNextStepByOrientation( EOrientation::South ),
+                               this->getNextStepByOrientation( EOrientation::SouthWest ),
+                               this->getNextStepByOrientation( EOrientation::SouthEast ),
+                               this->getNextStepByOrientation( EOrientation::West ),
+                               this->getNextStepByOrientation( EOrientation::East ),
+                               this->getNextStepByOrientation( EOrientation::NorthWest ),
+                               this->getNextStepByOrientation( EOrientation::NorthEast ),
+                               this->getNextStepByOrientation( EOrientation::North )
+                             };
+                    break;
+                }
+            }
+        }
+
+        Point2D getNextStepByOrientation( EOrientation inOrientation )
+        {
+            switch ( inOrientation )
             {
                 case EOrientation::South:
                     return Point2D( position.x, position.y - 1 );
@@ -481,36 +618,6 @@ class Robot
             return position;
         }
 
-        EOrientation getBackwardDirection()
-        {
-            switch ( orientation )
-            {
-                case EOrientation::South:
-                    return EOrientation::North;
-
-                case EOrientation::SouthEast:
-                    return EOrientation::NorthWest;
-
-                case EOrientation::East:
-                    return EOrientation::West;
-
-                case EOrientation::NorthEast:
-                    return EOrientation::SouthWest;
-
-                case EOrientation::North:
-                    return EOrientation::South;
-
-                case EOrientation::NorthWest:
-                    return EOrientation::SouthEast;
-
-                case EOrientation::West:
-                    return EOrientation::East;
-
-                case EOrientation::SouthWest:
-                    return EOrientation::NorthEast;
-            }
-        }
-
         bool isDirectionTraversable()
         {
             unsigned int	sensors[ 5 ];
@@ -520,13 +627,13 @@ class Robot
             {
                 clear();
                 print( "!OBS!" );
-                delay_ms( 2000 );
+                delay_ms( 1000 );
                 return false;
             }
 
             clear();
             print( "NOT OBS" );
-            delay_ms( 2000 );
+            delay_ms( 1000 );
 
             return true;
         }
@@ -537,7 +644,7 @@ class Robot
             Point2D nextPos = nextStepToFinish( goalPos );
 
             printPos( nextPos.x, nextPos.y );
-            delay_ms( 2000 );
+            delay_ms( 1000 );
 
             if ( !matrix[ nextPos.x ][ nextPos.y ].isVisited )
             {
