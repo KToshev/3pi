@@ -47,13 +47,19 @@ class Point2D
             , y ( inY )
         {}
 
-        bool operator==( const Point2D& pt ) const
+        bool operator==( const Point2D& other ) const
         {
-            return x == pt.x && y == pt.y;
+            return x == other.x && y == other.y;
+        }
+
+        bool operator!=( const Point2D& other ) const
+        {
+            return x != other.x || y != other.y;
         }
 };
 //oh, it's magic
-int adjacentSquaresCoordinatesIteration [2][8] = {{0, 1, 1, 1, 0, -1, -1, -1}, {-1, -1, 0, 1, 1, 1, 0, -1}} ;
+int adjacentSquaresCoordinatesIteration [2][8] = {{0, 1, 1, 1, 0, -1, -1, -1}, {-1, -1, 0, 1, 1, 1, 0, -1}};
+
 class Cell
 {
     public:
@@ -78,6 +84,7 @@ class Cell
 };
 
 typedef short ( *getDistFunc )( const Point2D&, const Point2D& );
+
 Cell matrix[ MAX_ROWS ][ MAX_ROWS ];
 
 class Robot
@@ -103,9 +110,9 @@ class Robot
 
             set_motors( 0, 0 );
 
-
             // Display battery voltage and wait two seconds
             unsigned short bat = read_battery_millivolts();
+
             clear();
             print_long( bat );
             print( "mV" );
@@ -375,7 +382,7 @@ class Robot
 
                 if ( doPrint )
                 {
-                    printPos( currPos.x, currPos.y );
+                    printPos( currPos );
                     lcd_goto_xy( 0, 1 );
                     print_long( currDist );
                     print( " | " );
@@ -420,6 +427,7 @@ class Robot
                 print( "here" );
                 delay_ms( 1000 );
                 clear();
+
                 // Could not find next pos with getNextDist, try with getDistToStart
                 // Define dist lambda
                 auto getDistToStart = []( const Point2D & pos, const Point2D & tmp ) -> short
@@ -522,6 +530,7 @@ class Robot
                 clear();
                 print( "!OBS!" );
                 delay_ms( 1000 );
+
                 return false;
             }
 
@@ -537,7 +546,7 @@ class Robot
         {
             Point2D nextPos = nextStepToFinish( goalPos );
 
-            printPos( nextPos.x, nextPos.y );
+            printPos( nextPos );
             delay_ms( 1000 );
 
             if ( !matrix[ nextPos.x ][ nextPos.y ].isVisited )
@@ -556,7 +565,7 @@ class Robot
             }
 
             // Move until stepping on the goal position
-            if ( position.x != goalPos.x || position.y != goalPos.y )
+            if ( position != goalPos )
             {
                 position = nextPos;
 
@@ -571,11 +580,11 @@ class Robot
             matrix[ position.x ][ position.y ].distToStart	= 0;
             matrix[ position.x ][ position.y ].isVisited	= true;
 
-            while ( ( position.x != finishPos.x || position.y != finishPos.y ) && lap <= CNT_LAPS )
+            while ( ( position != finishPos ) && lap <= CNT_LAPS )
             {
                 stepToGoal( finishPos );
 
-                if ( position.x == finishPos.x && position.y == finishPos.y )
+                if ( position == finishPos )
                 {
                     matrix[ position.x ][ position.y ].distToFinish	= 0;
                     this->reverseDirection();
@@ -587,13 +596,13 @@ class Robot
             }
         }
 
-        void printPos( short x, short y )
+        void printPos( Point2D& pos )
         {
             clear();
             print( "(" );
-            print_long( x );
+            print_long( pos.x );
             print( ", " );
-            print_long( y );
+            print_long( pos.y );
             print( ")" );
         }
 
@@ -613,7 +622,7 @@ class Robot
                     finishPos.y = ( finishPos.y + 1 ) % MAX_ROWS;
                 }
 
-                printPos( finishPos.x, finishPos.y );
+                printPos( finishPos );
 
                 lcd_goto_xy( 0, 1 );
                 print( " A B C " );
