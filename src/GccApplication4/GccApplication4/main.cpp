@@ -58,7 +58,7 @@ class Point2D
         }
 };
 //oh, it's magic
-short adjacentSquaresCoordinatesIteration [2][8] = {{0, 1, 1, 1, 0, -1, -1, -1}, {-1, -1, 0, 1, 1, 1, 0, -1}};
+short adjacentSquaresCoordinatesIteration [2][8] = {{0, 1, 1, 1, 0, -1, -1, -1}, {1, 1, 0, -1, -1, -1, 0, 1}};
 
 class Cell
 {
@@ -363,8 +363,8 @@ class Robot
             {
                 Point2D currPos;
 
-                currPos.x = position.x + adjacentSquaresCoordinatesIteration[ 0 ][ ( pos + i ) % 8 ];
-                currPos.y = position.y + adjacentSquaresCoordinatesIteration[ 1 ][ ( pos + i ) % 8 ];
+                currPos.x = from.x + adjacentSquaresCoordinatesIteration[ 0 ][ ( pos + i ) % 8 ];
+                currPos.y = from.y + adjacentSquaresCoordinatesIteration[ 1 ][ ( pos + i ) % 8 ];
 
                 short	currDist = getDist( currPos, to );
 
@@ -411,6 +411,7 @@ class Robot
 
             if ( nextPos == position )
             {
+
                 clear();
                 print( "here" );
                 delay_ms( 1000 );
