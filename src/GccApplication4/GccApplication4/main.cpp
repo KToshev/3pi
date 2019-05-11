@@ -58,7 +58,7 @@ class Point2D
         }
 };
 //oh, it's magic
-int adjacentSquaresCoordinatesIteration [2][8] = {{0, 1, 1, 1, 0, -1, -1, -1}, {-1, -1, 0, 1, 1, 1, 0, -1}};
+short adjacentSquaresCoordinatesIteration [2][8] = {{0, 1, 1, 1, 0, -1, -1, -1}, {-1, -1, 0, 1, 1, 1, 0, -1}};
 
 class Cell
 {
@@ -353,31 +353,19 @@ class Robot
             return distance;
         }
 
-
-        Point2D* getAdjacentPts()
-        {
-            Point2D result[8];
-            int pos = ( int )orientation;
-
-            for ( int i = 0; i < 8; i++ )
-            {
-                result[ i ].x = position.x + adjacentSquaresCoordinatesIteration[ 0 ][ ( pos + i ) % 8 ];
-                result[ i ].y = position.y + adjacentSquaresCoordinatesIteration[ 1 ][ ( pos + i ) % 8 ];
-            }
-
-            return result;
-        }
-
         Point2D getClosestAdjacent( const Point2D& from, const Point2D& to, getDistFunc getDist )
         {
-            Point2D* adjPts;
-            adjPts	= this->getAdjacentPts();
             short	minDist		= getDist( from, to );
             Point2D	minPos( from );
+            short	pos			= ( short )orientation;
 
             for ( short i = 0; i < 8; i++ )
             {
-                Point2D currPos( adjPts[ i ] );
+                Point2D currPos;
+
+                currPos.x = position.x + adjacentSquaresCoordinatesIteration[ 0 ][ ( pos + i ) % 8 ];
+                currPos.y = position.y + adjacentSquaresCoordinatesIteration[ 1 ][ ( pos + i ) % 8 ];
+
                 short	currDist = getDist( currPos, to );
 
                 if ( doPrint )
@@ -596,7 +584,7 @@ class Robot
             }
         }
 
-        void printPos( Point2D& pos )
+        void printPos( const Point2D& pos )
         {
             clear();
             print( "(" );
