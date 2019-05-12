@@ -12,8 +12,9 @@
 const short MAX_ROWS		= 15; // Matrix dimensions
 const short OBSTACLE_VALUE	= 1200; // TODO: Set real value
 const short MARKER_VALUE	= 350;
-const short CNT_LAPS		= 4;
-#define     PI               3.14159265
+const short LAPS_COUNT		= 4;
+const short MAX_OFFSET		= 250;
+#define     PI                3.14159265
 
 bool doPrint = false;
 
@@ -95,6 +96,8 @@ class Robot
         Point2D			finishPos;
         unsigned int	sensors[ 5 ]; // An array to hold sensor values
         short			lap;
+        bool			boostLeftWheel;
+        bool			boostRightWheel;
 
     public:
         Robot()
@@ -102,6 +105,8 @@ class Robot
             , orientation( EOrientation::North )
             , finishPos( 5, 3 )
             , lap ( 0 )
+            , boostLeftWheel( false )
+            , boostRightWheel( false )
         {}
         void initialize()
         {
@@ -162,7 +167,18 @@ class Robot
 
         void moveForward()
         {
-            set_motors( 19, 19 );
+            if ( boostLeftWheel && !boostRightWheel )
+            {
+                set_motors( 20, 19 );
+            }
+            else if ( !boostLeftWheel && boostRightWheel )
+            {
+                set_motors( 19, 20 );
+            }
+            else
+            {
+                set_motors( 19, 19 );
+            }
 
             while ( !isOnMarker() ) {}
 
@@ -174,6 +190,27 @@ class Robot
         bool isOnMarker()
         {
             read_line_sensors( sensors, IR_EMITTERS_ON );
+
+            short currentOffset = sensors[0] + sensors[1] - sensors[3] - sensors[4];
+
+            if ( abs( currentOffset ) >= MAX_OFFSET )
+            {
+                if ( currentOffset > 0 )
+                {
+                    boostLeftWheel = true;
+                    boostRightWheel = false;
+                }
+                else
+                {
+                    boostLeftWheel = false;
+                    boostRightWheel = true;
+                }
+            }
+            else
+            {
+                boostLeftWheel = false;
+                boostRightWheel = false;
+            }
 
             if ( sensors[1] > OBSTACLE_VALUE || sensors[2] > OBSTACLE_VALUE || sensors[3] > OBSTACLE_VALUE ) // there is obstacle
             {
@@ -448,7 +485,7 @@ class Robot
             {
                 count++;
 
-                if ( lap < CNT_LAPS )
+                if ( lap < LAPS_COUNT )
                 {
                     nextPos = this->getNextPos( goalPos );
                 }
@@ -569,7 +606,7 @@ class Robot
             matrix[ position.x ][ position.y ].distToStart	= 0;
             matrix[ position.x ][ position.y ].isVisited	= true;
 
-            while ( ( position != finishPos ) && lap <= CNT_LAPS )
+            while ( ( position != finishPos ) && lap <= LAPS_COUNT )
             {
                 stepToGoal( finishPos );
 
