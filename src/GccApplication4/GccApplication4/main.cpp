@@ -191,33 +191,33 @@ class Robot
         {
             read_line_sensors( sensors, IR_EMITTERS_ON );
 
-            short currentOffset = sensors[0] + sensors[1] - sensors[3] - sensors[4];
-
-            if ( abs( currentOffset ) >= MAX_OFFSET )
-            {
-                if ( currentOffset > 0 )
-                {
-                    boostLeftWheel = true;
-                    boostRightWheel = false;
-                }
-                else
-                {
-                    boostLeftWheel = false;
-                    boostRightWheel = true;
-                }
-            }
-            else
-            {
-                boostLeftWheel = false;
-                boostRightWheel = false;
-            }
-
             if ( sensors[1] > OBSTACLE_VALUE || sensors[2] > OBSTACLE_VALUE || sensors[3] > OBSTACLE_VALUE ) // there is obstacle
             {
                 return true;
             }
             else if ( sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE ) // there is marker
             {
+                short currentOffset = sensors[0] + sensors[1] - sensors[3] - sensors[4];
+
+                if ( abs( currentOffset ) >= MAX_OFFSET )
+                {
+                    if ( currentOffset > 0 )
+                    {
+                        boostLeftWheel = true;
+                        boostRightWheel = false;
+                    }
+                    else
+                    {
+                        boostLeftWheel = false;
+                        boostRightWheel = true;
+                    }
+                }
+                else
+                {
+                    boostLeftWheel = false;
+                    boostRightWheel = false;
+                }
+
                 return true;
             }
 
