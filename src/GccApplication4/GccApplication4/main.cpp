@@ -12,8 +12,8 @@
 const short MAX_ROWS		= 15; // Matrix dimensions
 const short OBSTACLE_VALUE	= 1200; // TODO: Set real value
 const short MARKER_VALUE	= 350;
-const short LAPS_COUNT		= 4;
-const short MAX_OFFSET		= 250;
+const short LAPS_COUNT		= 2;
+const short MAX_OFFSET		= 120;
 #define     PI                3.14159265
 
 bool doPrint = false;
@@ -84,7 +84,7 @@ class Cell
         }
 };
 
-typedef short ( *getDistFunc )( const Point2D&, const Point2D& );
+typedef float ( *getDistFunc )( const Point2D&, const Point2D& );
 
 Cell matrix[ MAX_ROWS ][ MAX_ROWS ];
 
@@ -167,6 +167,12 @@ class Robot
 
         void moveForward()
         {
+            set_motors( 19, 19 );
+
+            while ( !isOnMarker() ) {}
+
+            play( ">>a32" );
+
             if ( boostLeftWheel && !boostRightWheel )
             {
                 set_motors( 20, 19 );
@@ -180,11 +186,14 @@ class Robot
                 set_motors( 19, 19 );
             }
 
-            while ( !isOnMarker() ) {}
-
-            play( ">>a32" );
             delay_ms( 900 );
             set_motors( 0, 0 );
+
+            //short currentOffset = ( sensors[0] + sensors[1] ) - ( sensors[3] + sensors[4] );
+            //clear();
+            //print_long( currentOffset );
+            //delay_ms( 2000 );
+            //clear();
         }
 
         bool isOnMarker()
@@ -197,11 +206,11 @@ class Robot
             }
             else if ( sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE ) // there is marker
             {
-                short currentOffset = sensors[0] + sensors[1] - sensors[3] - sensors[4];
+                short currentOffset = sensors[1] - sensors[3];
 
-                if ( abs( currentOffset ) >= MAX_OFFSET )
+                if ( abs( currentOffset ) >= 20 )
                 {
-                    if ( currentOffset > 0 )
+                    if ( currentOffset < 0 )
                     {
                         boostLeftWheel = true;
                         boostRightWheel = false;
@@ -335,11 +344,11 @@ class Robot
                 direction = 8 + direction;
             }
 
-            clear();
-            print_long( direction );
-            lcd_goto_xy( 0, 1 );
-            print_long( angle );
-            //delay_ms(1000);
+            //clear();
+            //print_long( direction );
+            //lcd_goto_xy( 0, 1 );
+            //print_long( angle );
+            //delay_ms( 1000 );
 
             setDeviceOrientation( angle );
 
@@ -392,7 +401,7 @@ class Robot
 
         Point2D getClosestAdjacent( const Point2D& from, const Point2D& to, getDistFunc getDist )
         {
-            short	minDist		= getDist( from, to );
+            float	minDist		= getDist( from, to );
             Point2D	minPos( from );
             short	pos			= ( short )orientation;
 
@@ -403,16 +412,16 @@ class Robot
                 currPos.x = from.x + adjacentSquaresCoordinatesIteration[ 0 ][ ( pos + i ) % 8 ];
                 currPos.y = from.y + adjacentSquaresCoordinatesIteration[ 1 ][ ( pos + i ) % 8 ];
 
-                short	currDist = getDist( currPos, to );
+                float	currDist = getDist( currPos, to );
 
                 if ( doPrint )
                 {
-                    printPos( currPos );
-                    lcd_goto_xy( 0, 1 );
-                    print_long( currDist );
-                    print( " | " );
-                    print_long( minDist );
-                    delay_ms( 4000 );
+                    //printPos( currPos );
+                    //lcd_goto_xy( 0, 1 );
+                    //print_long( currDist );
+                    //print( " | " );
+                    //print_long( minDist );
+                    //delay_ms( 4000 );
                 }
 
                 if ( currDist < minDist )
@@ -430,14 +439,14 @@ class Robot
         Point2D getNextPos( const Point2D& goalPos )
         {
             // Define dist lambda
-            auto getNextDist = []( const Point2D & pos, const Point2D & goal ) -> short
+            auto getNextDist = []( const Point2D & pos, const Point2D & goal ) -> float
             {
-                short result = SHRT_MAX;
+                float result = SHRT_MAX;
 
                 if ( Robot::isValidPos( pos ) &&
                         !matrix[ pos.x ][ pos.y ].isObstacle && !matrix[ pos.x ][ pos.y ].isVisited )
                 {
-                    result = abs( goal.x - pos.x ) + abs( goal.y - pos.y );
+                    result = sqrtf( abs( goal.x - pos.x ) * abs( goal.x - pos.x ) + abs( goal.y - pos.y ) * abs( goal.y - pos.y ) );
                 }
 
                 return result;
@@ -449,16 +458,16 @@ class Robot
             if ( nextPos == position )
             {
 
-                clear();
-                print( "here" );
-                delay_ms( 1000 );
-                clear();
+                //clear();
+                //print( "here" );
+                //delay_ms( 1000 );
+                //clear();
 
                 // Could not find next pos with getNextDist, try with getDistToStart
                 // Define dist lambda
-                auto getDistToStart = []( const Point2D & pos, const Point2D & tmp ) -> short
+                auto getDistToStart = []( const Point2D & pos, const Point2D & tmp ) -> float
                 {
-                    short result = SHRT_MAX;
+                    float result = SHRT_MAX;
 
                     if ( Robot::isValidPos( pos ) )
                     {
@@ -553,16 +562,16 @@ class Robot
 
             if ( sensors[ 1 ] > OBSTACLE_VALUE || sensors[ 2 ] > OBSTACLE_VALUE || sensors[ 3 ] > OBSTACLE_VALUE )
             {
-                clear();
-                print( "!OBS!" );
-                delay_ms( 1000 );
+                //clear();
+                //print( "!OBS!" );
+                //delay_ms( 1000 );
 
                 return false;
             }
 
-            clear();
-            print( "NOT OBS" );
-            delay_ms( 1000 );
+            //clear();
+            //print( "NOT OBS" );
+            //delay_ms( 1000 );
 
             return true;
         }
@@ -572,8 +581,8 @@ class Robot
         {
             Point2D nextPos = nextStepToFinish( goalPos );
 
-            printPos( nextPos );
-            delay_ms( 1000 );
+            //printPos( nextPos );
+            //delay_ms( 1000 );
 
             if ( !matrix[ nextPos.x ][ nextPos.y ].isVisited )
             {
@@ -614,7 +623,7 @@ class Robot
                 {
                     matrix[ position.x ][ position.y ].distToFinish	= 0;
                     this->reverseDirection();
-                    doPrint = true;
+                    doPrint = false;
                     matrix[ position.x ][ position.y ].isVisited	= true;
 
                     lap++;
@@ -746,9 +755,9 @@ class Robot
 
         Point2D getNearestToStartAdjacent( const Point2D& currentPos )
         {
-            auto getDistToStart = []( const Point2D & pos, const Point2D & tmp ) -> short
+            auto getDistToStart = []( const Point2D & pos, const Point2D & tmp ) -> float
             {
-                short result = SHRT_MAX;
+                float result = SHRT_MAX;
 
                 if ( Robot::isValidPos( pos ) && matrix[ pos.x ][ pos.y ].isVisited )
                 {
@@ -763,9 +772,9 @@ class Robot
 
         Point2D getNearestToFinishAdjacent( const Point2D& currentPos )
         {
-            auto getDistToFinish = []( const Point2D & pos, const Point2D & tmp ) -> short
+            auto getDistToFinish = []( const Point2D & pos, const Point2D & tmp ) -> float
             {
-                short result = SHRT_MAX;
+                float result = SHRT_MAX;
 
                 if ( Robot::isValidPos( pos ) && !matrix[ pos.x ][ pos.y ].isVisited )
                 {
