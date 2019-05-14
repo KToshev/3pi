@@ -737,7 +737,7 @@ class Robot
             {
                 Cell& currCell( matrix[ currentPos.x ][ currentPos.y ] );
 
-                if ( currCell.distToFinish < dist - currCell.distToStart )
+                if ( currCell.distToFinish > dist - currCell.distToStart )
                 {
                     currCell.distToFinish = dist - currCell.distToStart;
                 }
@@ -747,7 +747,7 @@ class Robot
 
             Cell& currCell( matrix[ currentPos.x ][ currentPos.y ] );
 
-            if ( currCell.distToFinish < dist - currCell.distToStart )
+            if ( currCell.distToFinish > dist - currCell.distToStart )
             {
                 currCell.distToFinish = dist - currCell.distToStart;
             }
