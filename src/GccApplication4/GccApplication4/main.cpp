@@ -11,7 +11,7 @@
 // Constants
 const short MAX_ROWS		= 15; // Matrix dimensions
 const short OBSTACLE_VALUE	= 1200; // TODO: Set real value
-const short MARKER_VALUE	= 350;
+const short MARKER_EPS		= 20;
 const short LAPS_COUNT		= 2;
 const short MAX_OFFSET		= 120;
 #define     PI                3.14159265
@@ -98,6 +98,7 @@ class Robot
         short			lap;
         bool			boostLeftWheel;
         bool			boostRightWheel;
+        unsigned short	markerValue;
 
     public:
         Robot()
@@ -196,15 +197,36 @@ class Robot
             //clear();
         }
 
+        // Reads line sensors a couple times and then sets markerValue as the average output of the 3 middle sensors
+        void calibrateMarkerValue()
+        {
+            unsigned int	sensorsArr[ 5 ];
+            markerValue = 0;
+
+            for ( short i = 0; i < 20; i++ )
+            {
+                read_line_sensors( sensorsArr, IR_EMITTERS_ON );
+                markerValue += ( sensorsArr[1] + sensorsArr[2] + sensorsArr[3] );
+            }
+
+            markerValue /= 60;
+            markerValue -= MARKER_EPS;
+
+            // Move a bit forward in order to go over the calibration point
+            set_motors( 20, 20 );
+            delay_ms( 900 );
+            set_motors( 0, 0 );
+        }
+
         bool isOnMarker()
         {
             read_line_sensors( sensors, IR_EMITTERS_ON );
 
             if ( sensors[1] > OBSTACLE_VALUE || sensors[2] > OBSTACLE_VALUE || sensors[3] > OBSTACLE_VALUE ) // there is obstacle
             {
-                return true;
+                return true; // do not return true here?? To DO
             }
-            else if ( sensors[1] > MARKER_VALUE || sensors[2] > MARKER_VALUE || sensors[3] > MARKER_VALUE ) // there is marker
+            else if ( sensors[1] > markerValue || sensors[2] > markerValue || sensors[3] > markerValue ) // there is marker
             {
                 short currentOffset = sensors[1] - sensors[3];
 
@@ -557,10 +579,10 @@ class Robot
 
         bool isDirectionTraversable()
         {
-            unsigned int	sensors[ 5 ];
-            read_line_sensors( sensors, IR_EMITTERS_ON );
+            unsigned int	sensorsArr[ 5 ];
+            read_line_sensors( sensorsArr, IR_EMITTERS_ON );
 
-            if ( sensors[ 1 ] > OBSTACLE_VALUE || sensors[ 2 ] > OBSTACLE_VALUE || sensors[ 3 ] > OBSTACLE_VALUE )
+            if ( sensorsArr[ 1 ] > OBSTACLE_VALUE || sensorsArr[ 2 ] > OBSTACLE_VALUE || sensorsArr[ 3 ] > OBSTACLE_VALUE )
             {
                 //clear();
                 //print( "!OBS!" );
@@ -692,8 +714,9 @@ class Robot
                 {
                     wait_for_button_release( BUTTON_B );//wait for the button to be released before run the program
                     // mainRobotLogic the initialization menu
-                    initializeMenu();
-                    mainRobotLogic();
+                    this->initializeMenu();
+                    this->calibrateMarkerValue();
+                    this->mainRobotLogic();
                 }
             }
         }
