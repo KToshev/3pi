@@ -137,8 +137,11 @@ class Robot
                 // Display the sensor values
                 for ( short i = 0; i < 5; i++ )
                 {
+                    print_long( i );
+                    lcd_goto_xy( 0, 1 );
                     print_long( sensors[ i ] );
-                    delay_ms( 500 );
+
+                    delay_ms( 800 );
                     clear();
                 }
 
@@ -211,6 +214,7 @@ class Robot
 
             markerValue /= 60;
             markerValue -= MARKER_EPS;
+
 
             // Move a bit forward in order to go over the calibration point
             set_motors( 20, 20 );
