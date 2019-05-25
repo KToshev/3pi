@@ -10,8 +10,8 @@
 
 // Constants
 const short MAX_ROWS		= 15; // Matrix dimensions
-const short OBSTACLE_VALUE	= 1200; // TODO: Set real value
-const short MARKER_EPS		= 20;
+const short OBSTACLE_VALUE	= 1400; // TODO: Set real value
+const short MARKER_EPS		= 80;
 const short LAPS_COUNT		= 2;
 const short MAX_OFFSET		= 120;
 #define     PI                3.14159265
@@ -94,10 +94,8 @@ class Robot
         Point2D			position;
         EOrientation	orientation;
         Point2D			finishPos;
-        unsigned int	sensors[ 5 ]; // An array to hold sensor values
         short			lap;
-        bool			boostLeftWheel;
-        bool			boostRightWheel;
+        short			currentOffset;
         unsigned short	markerValue;
 
     public:
@@ -106,8 +104,7 @@ class Robot
             , orientation( EOrientation::North )
             , finishPos( 5, 3 )
             , lap ( 0 )
-            , boostLeftWheel( false )
-            , boostRightWheel( false )
+            , currentOffset( 0 )
         {}
         void initialize()
         {
@@ -130,6 +127,8 @@ class Robot
         // Displays the data returned from the sensors
         void testSensors()
         {
+            unsigned int	sensors[ 5 ];
+
             while ( true )
             {
                 read_line_sensors( sensors, IR_EMITTERS_ON );
@@ -177,13 +176,19 @@ class Robot
 
             play( ">>a32" );
 
-            if ( boostLeftWheel && !boostRightWheel )
+            if ( abs( currentOffset ) >= 20 )
             {
-                set_motors( 20, 19 );
-            }
-            else if ( !boostLeftWheel && boostRightWheel )
-            {
-                set_motors( 19, 20 );
+                if ( currentOffset < 0 )
+                {
+                    set_motors( 19 + ( short )( abs( currentOffset ) / 15 ) - 1, 19 );
+                }
+                else
+                {
+                    set_motors( 19, 19 + ( short )( abs( currentOffset ) / 15 ) - 1 );
+                }
+
+                //clear();
+                //print_long( ( short )( abs( currentOffset ) / 10 ) - 1 );
             }
             else
             {
@@ -206,24 +211,28 @@ class Robot
             unsigned int	sensorsArr[ 5 ];
             markerValue = 0;
 
-            for ( short i = 0; i < 20; i++ )
+            for ( short i = 0; i < 10; i++ )
             {
                 read_line_sensors( sensorsArr, IR_EMITTERS_ON );
                 markerValue += ( sensorsArr[1] + sensorsArr[2] + sensorsArr[3] );
             }
 
-            markerValue /= 60;
-            markerValue -= MARKER_EPS;
+            markerValue /= 30;
+            markerValue += MARKER_EPS;
 
+            print_long( markerValue );
+            delay_ms( 1000 );
+            clear();
 
             // Move a bit forward in order to go over the calibration point
-            set_motors( 20, 20 );
-            delay_ms( 900 );
-            set_motors( 0, 0 );
+            //set_motors( 20, 20 );
+            //delay_ms( 900 );
+            //set_motors( 0, 0 );
         }
 
         bool isOnMarker()
         {
+            unsigned int	sensors[ 5 ];
             read_line_sensors( sensors, IR_EMITTERS_ON );
 
             if ( sensors[1] > OBSTACLE_VALUE || sensors[2] > OBSTACLE_VALUE || sensors[3] > OBSTACLE_VALUE ) // there is obstacle
@@ -232,26 +241,7 @@ class Robot
             }
             else if ( sensors[1] > markerValue || sensors[2] > markerValue || sensors[3] > markerValue ) // there is marker
             {
-                short currentOffset = sensors[1] - sensors[3];
-
-                if ( abs( currentOffset ) >= 20 )
-                {
-                    if ( currentOffset < 0 )
-                    {
-                        boostLeftWheel = true;
-                        boostRightWheel = false;
-                    }
-                    else
-                    {
-                        boostLeftWheel = false;
-                        boostRightWheel = true;
-                    }
-                }
-                else
-                {
-                    boostLeftWheel = false;
-                    boostRightWheel = false;
-                }
+                currentOffset = sensors[1] - sensors[3];
 
                 return true;
             }
@@ -427,7 +417,7 @@ class Robot
 
         Point2D getClosestAdjacent( const Point2D& from, const Point2D& to, getDistFunc getDist )
         {
-            float	minDist		= getDist( from, to );
+            float	minDist		= SHRT_MAX;
             Point2D	minPos( from );
             short	pos			= ( short )orientation;
 
@@ -438,22 +428,25 @@ class Robot
                 currPos.x = from.x + adjacentSquaresCoordinatesIteration[ 0 ][ ( pos + i ) % 8 ];
                 currPos.y = from.y + adjacentSquaresCoordinatesIteration[ 1 ][ ( pos + i ) % 8 ];
 
-                float	currDist = getDist( currPos, to );
-
-                if ( doPrint )
+                if ( isValidPos( currPos ) )
                 {
-                    //printPos( currPos );
-                    //lcd_goto_xy( 0, 1 );
-                    //print_long( currDist );
-                    //print( " | " );
-                    //print_long( minDist );
-                    //delay_ms( 4000 );
-                }
+                    float	currDist = getDist( currPos, to );
 
-                if ( currDist < minDist )
-                {
-                    minDist = currDist;
-                    minPos	= currPos;
+                    if ( doPrint )
+                    {
+                        //printPos( currPos );
+                        //lcd_goto_xy( 0, 1 );
+                        //print_long( currDist );
+                        //print( " | " );
+                        //print_long( minDist );
+                        //delay_ms( 4000 );
+                    }
+
+                    if ( currDist < minDist )
+                    {
+                        minDist = currDist;
+                        minPos	= currPos;
+                    }
                 }
             }
 
@@ -651,7 +644,7 @@ class Robot
                     this->reverseDirection();
                     doPrint = false;
                     matrix[ position.x ][ position.y ].isVisited	= true;
-
+                    print( "." );
                     lap++;
                 }
             }
@@ -694,6 +687,7 @@ class Robot
             // Always wait for the button to be released so that 3pi doesn't start moving until your hand is away from it.
             wait_for_button_release( BUTTON_B );
             delay_ms( 1000 );
+            clear();
         }
 
         //Main program menu
@@ -735,19 +729,17 @@ class Robot
             {
                 for ( short j = 0; j < MAX_ROWS; j++ )
                 {
-                    if ( matrix[ i ][ j ].isVisited )
-                    {
-                        if ( matrix[ i ][ j ].distToStart == 0 )
-                        {
-                            // Save the start position.
-                            startPos = Point2D( i, j );
-                        }
 
-                        short tmp						= matrix[ i ][ j ].distToFinish;
-                        matrix[ i ][ j ].distToFinish	= matrix[ i ][ j ].distToStart;
-                        matrix[ i ][ j ].distToStart	= tmp;
-                        matrix[ i ][ j ].isVisited		= false;
+                    if ( matrix[ i ][ j ].distToStart == 0 )
+                    {
+                        // Save the start position.
+                        startPos = Point2D( i, j );
                     }
+
+                    short tmp						= matrix[ i ][ j ].distToFinish;
+                    matrix[ i ][ j ].distToFinish	= matrix[ i ][ j ].distToStart;
+                    matrix[ i ][ j ].distToStart	= tmp;
+                    matrix[ i ][ j ].isVisited		= false;
                 }
             }
 
